@@ -1,14 +1,17 @@
 const axios = require('axios');
 
 class QuizGame {
-  constructor(bot, chatId) {
+  constructor(bot, chatId, userId, userName) {
     this.bot = bot;
     this.chatId = chatId;
+    this.userId = userId;
+    this.userName = userName;
     this.currentQuestionIndex = 0;
     this.score = 0;
     this.totalQuestions = 20;
     this.questions = [];
     this.currentQuestion = null;
+    this.messageId = null;
   }
 
   async initializeQuiz() {
@@ -43,17 +46,27 @@ class QuizGame {
 
     const questionText = `
 📝 Question ${this.currentQuestionIndex + 1}/${this.totalQuestions}
+Quiz for: @${this.userName}
 
 ${this.decodeHtml(this.currentQuestion.question)}
 
 Answers:
 ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.decodeHtml(answer)}`).join('\n')}
+
+⚠️ Only @${this.userName} can answer this question!
     `;
 
-    await this.bot.sendMessage(this.chatId, questionText);
+    const sentMessage = await this.bot.sendMessage(this.chatId, questionText);
+    this.messageId = sentMessage.message_id;
   }
 
   async handleAnswer(msg) {
+    // Check if the answer is from the correct user
+    if (msg.from.id !== this.userId) {
+      await this.bot.sendMessage(this.chatId, `❌ This quiz is for @${this.userName} only. Start your own quiz!`);
+      return;
+    }
+
     const userAnswer = msg.text.toUpperCase().trim();
     const correctAnswer = this.decodeHtml(this.currentQuestion.correct_answer);
     const allAnswers = [
@@ -91,7 +104,7 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
     }
 
     const resultMessage = `
-🏅 Quiz Completed!
+🏅 Quiz Completed for @${this.userName}!
 
 Total Questions: ${this.totalQuestions}
 Your Score: ${this.score}/${this.totalQuestions}
@@ -127,32 +140,38 @@ module.exports = {
 
   async execute(bot, msg) {
     const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const userName = msg.from.username || msg.from.first_name;
 
-    // Use the method directly on the module, not 'this'
-    if (module.exports.quizSessions.has(chatId)) {
-      return bot.sendMessage(chatId, '❌ A quiz is already in progress. Complete the current quiz first.');
+    // Check if a quiz is already running for this chat
+    const existingQuiz = Array.from(module.exports.quizSessions.values())
+      .find(quiz => quiz.chatId === chatId);
+
+    if (existingQuiz) {
+      return bot.sendMessage(chatId, `❌ A quiz is already in progress for @${existingQuiz.userName}. Wait for it to finish.`);
     }
 
-    const quizGame = new QuizGame(bot, chatId);
+    const quizGame = new QuizGame(bot, chatId, userId, userName);
     const initialized = await quizGame.initializeQuiz();
 
     if (!initialized) {
       return bot.sendMessage(chatId, '❌ Failed to load quiz. Please try again.');
     }
 
-    // Use module.exports to set the quiz session
-    module.exports.quizSessions.set(chatId, quizGame);
+    // Store the quiz session
+    module.exports.quizSessions.set(`${chatId}_${userId}`, quizGame);
     await quizGame.sendQuestion();
 
-    bot.onReplyToMessage(chatId, msg.message_id, async (replyMsg) => {
-      // Use module.exports to get the active quiz
-      const activeQuiz = module.exports.quizSessions.get(chatId);
+    // Set up reply listener
+    bot.onReplyToMessage(chatId, quizGame.messageId, async (replyMsg) => {
+      const activeQuiz = module.exports.quizSessions.get(`${chatId}_${userId}`);
+      
       if (activeQuiz) {
         await activeQuiz.handleAnswer(replyMsg);
 
         // Remove quiz session when completed
         if (activeQuiz.currentQuestionIndex >= activeQuiz.totalQuestions) {
-          module.exports.quizSessions.delete(chatId);
+          module.exports.quizSessions.delete(`${chatId}_${userId}`);
         }
       }
     });
