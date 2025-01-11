@@ -122,12 +122,14 @@ ${medalDescription}
 module.exports = {
   name: 'quiz',
   description: 'Start a 20-question quiz game',
+  
   quizSessions: new Map(),
 
   async execute(bot, msg) {
     const chatId = msg.chat.id;
 
-    if (this.quizSessions.has(chatId)) {
+    // Use the method directly on the module, not 'this'
+    if (module.exports.quizSessions.has(chatId)) {
       return bot.sendMessage(chatId, '❌ A quiz is already in progress. Complete the current quiz first.');
     }
 
@@ -138,13 +140,20 @@ module.exports = {
       return bot.sendMessage(chatId, '❌ Failed to load quiz. Please try again.');
     }
 
-    this.quizSessions.set(chatId, quizGame);
+    // Use module.exports to set the quiz session
+    module.exports.quizSessions.set(chatId, quizGame);
     await quizGame.sendQuestion();
 
     bot.onReplyToMessage(chatId, msg.message_id, async (replyMsg) => {
-      const activeQuiz = this.quizSessions.get(chatId);
+      // Use module.exports to get the active quiz
+      const activeQuiz = module.exports.quizSessions.get(chatId);
       if (activeQuiz) {
         await activeQuiz.handleAnswer(replyMsg);
+
+        // Remove quiz session when completed
+        if (activeQuiz.currentQuestionIndex >= activeQuiz.totalQuestions) {
+          module.exports.quizSessions.delete(chatId);
+        }
       }
     });
   }
