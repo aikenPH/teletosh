@@ -5,27 +5,18 @@ class GroupJoinNotifier {
   }
 
   async handleBotAddedToGroup(msg) {
-    if (process.env.GROUP_JOIN_NOTIFICATIONS !== 'on') return;
-
     try {
       const newMembers = msg.new_chat_members;
       const botUsername = this.bot.botInfo.username;
 
-      const isBotAdded = newMembers.some(member => 
+      const botMember = newMembers.find(member => 
         member.username === botUsername
       );
 
-      if (isBotAdded) {
+      if (botMember) {
         const chatId = msg.chat.id;
         const chatTitle = msg.chat.title || 'Unknown Group';
         const chatType = msg.chat.type;
-
-        let inviteLink = '';
-        try {
-          inviteLink = await this.bot.exportChatInviteLink(chatId);
-        } catch (linkError) {
-          console.error('Could not generate invite link:', linkError);
-        }
 
         const notificationMessage = `
 🤖 <b>Bot Added to New Group</b>
@@ -34,8 +25,6 @@ class GroupJoinNotifier {
 • Name: <code>${chatTitle}</code>
 • Type: <code>${chatType}</code>
 • Group ID: <code>${chatId}</code>
-
-${inviteLink ? `🔗 Invite Link: ${inviteLink}` : ''}
 
 🕒 Added at: ${new Date().toLocaleString()}
         `;
@@ -46,6 +35,11 @@ ${inviteLink ? `🔗 Invite Link: ${inviteLink}` : ''}
           });
         } catch (ownerNotifyError) {
           console.error('Could not notify owner:', ownerNotifyError);
+          console.error('Error Details:', {
+            ownerId: this.ownerId,
+            botUsername: botUsername,
+            chatTitle: chatTitle
+          });
         }
       }
     } catch (error) {
