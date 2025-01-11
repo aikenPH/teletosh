@@ -10,6 +10,7 @@ const EventReminder = require('./handlers/eventReminder');
 const AutomatedResponses = require('./handlers/automatedResponses');
 const GroupManager = require('./handlers/groupManager');
 const AutoReactHandler = require('./handlers/autoReactHandler');
+const GroupJoinNotifier = require('./handlers/groupJoinNotifier');
 const Database = require('./utils/database');
 const config = require('./config');
 
@@ -71,12 +72,14 @@ class LuminaBot {
     this.automatedResponses = new AutomatedResponses(this.bot, this.db);
     this.groupManager = new GroupManager(this.bot, this.db);
     this.autoReactHandler = new AutoReactHandler(this.bot, this.db);
+    this.groupJoinNotifier = new GroupJoinNotifier(this.bot);
 
     this.setupEventListeners();
     this.loadCommands();
     this.setupErrorHandling();
 
     this.eventReminder.startEventChecking();
+    this.groupJoinNotifier.setupListener();
   }
 
   setupEventListeners() {
@@ -110,6 +113,7 @@ class LuminaBot {
     this.bot.on('new_chat_members', async (msg) => {
       try {
         await this.groupManager.handleNewMember(msg);
+        await this.groupJoinNotifier.handleBotAddedToGroup(msg);
       } catch (error) {
         console.error('Error handling new member:', error);
       }
@@ -156,3 +160,4 @@ const luminaBot = new LuminaBot();
 console.log('Lumina Bot is running...');
 
 module.exports = LuminaBot;
+   
