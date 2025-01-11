@@ -131,11 +131,11 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
       };
     }
 
-    // Create a clean result message without markdown
     const resultMessage = `
 🎯 Quiz Results for @${this.userName}
 
 ${resultData.title}
+
 ${resultData.description}
 
 📊 Score Breakdown:
@@ -145,18 +145,15 @@ ${resultData.description}
 🌟 Keep challenging yourself!`;
 
     try {
-      // Send photo with caption, no parse_mode
       await this.bot.sendPhoto(this.chatId, resultData.imageUrl, {
         caption: resultMessage
       });
     } catch (error) {
       console.error('Failed to send result with image:', error);
       try {
-        // Fallback to text message, no parse_mode
         await this.bot.sendMessage(this.chatId, resultMessage);
       } catch (fallbackError) {
         console.error('Failed to send result message:', fallbackError);
-        // Ultimate fallback with minimal formatting
         await this.bot.sendMessage(
           this.chatId, 
           `Quiz completed! Final score: ${this.score}/${this.totalQuestions} (${percentage.toFixed(1)}%)`
@@ -186,7 +183,6 @@ module.exports = {
     const userId = msg.from.id;
     const userName = msg.from.username || msg.from.first_name;
 
-    // Check if a quiz is already running for this chat
     const existingQuiz = Array.from(module.exports.quizSessions.values())
       .find(quiz => quiz.chatId === chatId);
 
@@ -201,10 +197,8 @@ module.exports = {
       return bot.sendMessage(chatId, '❌ Failed to load quiz. Please try again.');
     }
 
-    // Store the quiz session
     module.exports.quizSessions.set(`${chatId}_${userId}`, quizGame);
     
-    // Create message handler function
     const messageHandler = async (replyMsg) => {
       if (replyMsg.reply_to_message && 
           replyMsg.reply_to_message.message_id === quizGame.messageId) {
@@ -217,19 +211,15 @@ module.exports = {
           if (answerResult) {
             await activeQuiz.sendQuestion();
           } else {
-            // Quiz is finished or answer was invalid
             module.exports.quizSessions.delete(`${chatId}_${userId}`);
-            // Remove the event listener
             bot.removeListener('message', messageHandler);
           }
         }
       }
     };
 
-    // Add message handler
     bot.on('message', messageHandler);
     
-    // Start the first question
     await quizGame.sendQuestion();
   }
 };
