@@ -72,7 +72,6 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
   }
 
   async handleAnswer(msg) {
-    // Check if the answer is from the correct user
     if (msg.from.id !== this.userId) {
       await this.bot.sendMessage(this.chatId, `❌ This quiz is for @${this.userName} only. Start your own quiz!`);
       return false;
@@ -94,49 +93,73 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
   }
 
   async endQuiz() {
-    let medalUrl = '';
-    let medalDescription = '';
+    // Calculate percentage score
+    const percentage = (this.score / this.totalQuestions) * 100;
+    
+    // Determine medal and message based on score
+    let resultData = {
+      imageUrl: '',
+      title: '',
+      description: ''
+    };
 
-    // Determine medal based on score
-    if (this.score === this.totalQuestions) {
-      medalUrl = 'https://i.ibb.co/6Wp139Q/gold-medal.png';
-      medalDescription = 'Perfect Score! 🏆 Gold Medal';
-    } else if (this.score >= Math.floor(this.totalQuestions * 0.7)) {
-      medalUrl = 'https://i.ibb.co/K5B0m5z/star.png';
-      medalDescription = 'Great Job! 🥈 Silver Medal';
-    } else if (this.score >= Math.floor(this.totalQuestions * 0.5)) {
-      medalUrl = 'https://i.ibb.co/D89nFpH/bronze-medal.png';
-      medalDescription = '👍 Bronze Medal';
+    if (percentage === 100) {
+      resultData = {
+        imageUrl: 'https://i.ibb.co/6Wp139Q/gold-medal.png',
+        title: '🏆 Perfect Score! Gold Medal',
+        description: 'Congratulations! You achieved a perfect score. Absolutely brilliant performance!'
+      };
+    } else if (percentage >= 70) {
+      resultData = {
+        imageUrl: 'https://i.ibb.co/K5B0m5z/star.png',
+        title: '🥈 Excellent! Silver Medal',
+        description: 'Great job! You showed impressive knowledge.'
+      };
+    } else if (percentage >= 50) {
+      resultData = {
+        imageUrl: 'https://i.ibb.co/D89nFpH/bronze-medal.png',
+        title: '🥉 Good Effort! Bronze Medal',
+        description: 'Nice work! Keep practicing to improve your score.'
+      };
     } else {
-      medalUrl = 'https://i.ibb.co/JFyJm3Q/coin.png';
-      medalDescription = '🎖️ Participation Award';
+      resultData = {
+        imageUrl: 'https://i.ibb.co/JFyJm3Q/coin.png',
+        title: '🎖️ Participation Award',
+        description: 'Thanks for participating! Keep learning and try again.'
+      };
     }
 
     const resultMessage = `
-🏅 Quiz Completed for @${this.userName}!
+🎯 Quiz Results for @${this.userName}
 
-Total Questions: ${this.totalQuestions}
-Your Score: ${this.score}/${this.totalQuestions}
-Accuracy: ${((this.score / this.totalQuestions) * 100).toFixed(2)}%
+${resultData.title}
+${resultData.description}
 
-${medalDescription}
+📊 Score Breakdown:
+• Correct Answers: ${this.score}/${this.totalQuestions}
+• Accuracy: ${percentage.toFixed(1)}%
+
+🌟 Keep challenging yourself!
     `;
 
     try {
-      // Attempt to send photo with caption
-      await this.bot.sendPhoto(this.chatId, medalUrl, {
+      // Send the result message with the medal image
+      await this.bot.sendPhoto(this.chatId, resultData.imageUrl, {
         caption: resultMessage,
         parse_mode: 'Markdown'
+      }).catch(async (error) => {
+        // If image sending fails, send text-only message
+        console.error('Failed to send result with image:', error);
+        await this.bot.sendMessage(this.chatId, resultMessage, {
+          parse_mode: 'Markdown'
+        });
       });
     } catch (error) {
-      console.error('Failed to send result photo:', error);
-      
-      // Fallback to sending message if photo fails
-      try {
-        await this.bot.sendMessage(this.chatId, `${resultMessage}\n\n🖼️ Medal Image: ${medalUrl}`);
-      } catch (fallbackError) {
-        console.error('Failed to send result message:', fallbackError);
-      }
+      console.error('Error in endQuiz:', error);
+      // Final fallback - simple text message
+      await this.bot.sendMessage(this.chatId, 
+        `Quiz completed! Final score: ${this.score}/${this.totalQuestions} (${percentage.toFixed(1)}%)`
+      );
     }
   }
 
@@ -152,7 +175,7 @@ ${medalDescription}
 
 module.exports = {
   name: 'quiz',
-  description: 'Start a 20-question quiz game',
+  description: 'Start a 5-question quiz game',
   
   quizSessions: new Map(),
 
@@ -176,15 +199,10 @@ module.exports = {
       return bot.sendMessage(chatId, '❌ Failed to load quiz. Please try again.');
     }
 
-    // Store the quiz session
     module.exports.quizSessions.set(`${chatId}_${userId}`, quizGame);
-    
-    // Start the first question
     await quizGame.sendQuestion();
 
-    // Set up reply listener
     quizGame.replyListener = bot.on('message', async (replyMsg) => {
-      // Check if this is a reply to our quiz message
       if (replyMsg.reply_to_message && 
           replyMsg.reply_to_message.message_id === quizGame.messageId) {
         
@@ -193,24 +211,17 @@ module.exports = {
         if (activeQuiz) {
           const answerResult = await activeQuiz.handleAnswer(replyMsg);
           
-          // Continue with next question or end quiz
           if (answerResult && activeQuiz.currentQuestionIndex < activeQuiz.totalQuestions) {
             const nextQuestionResult = await activeQuiz.sendQuestion();
             
             if (!nextQuestionResult) {
-                            // Quiz is finished
               module.exports.quizSessions.delete(`${chatId}_${userId}`);
-              
-              // Remove the reply listener
               if (activeQuiz.replyListener) {
                 activeQuiz.replyListener.off('message');
               }
             }
           } else {
-            // Quiz is finished
             module.exports.quizSessions.delete(`${chatId}_${userId}`);
-            
-            // Remove the reply listener
             if (activeQuiz.replyListener) {
               activeQuiz.replyListener.off('message');
             }
