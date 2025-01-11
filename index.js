@@ -3,6 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const Promise = require('bluebird');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 const CommandHandler = require('./handlers/commandHandler');
 const ModerationTools = require('./handlers/moderationTools');
 const EventReminder = require('./handlers/eventReminder');
@@ -11,6 +12,9 @@ const GroupManager = require('./handlers/groupManager');
 const AutoReactHandler = require('./handlers/autoReactHandler');
 const Database = require('./utils/database');
 const config = require('./config');
+
+const PORT = process.env.PORT || 3000;
+const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -41,8 +45,23 @@ class LuminaBot {
     }
 
     this.bot = new TelegramBot(config.BOT_TOKEN, {
-      polling: true,
-      filepath: false
+      webHook: {
+        port: PORT,
+        autoOpen: false
+      }
+    });
+
+    this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
+
+    const app = express();
+    app.use(express.json());
+    app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
+      this.bot.processUpdate(req.body);
+      res.sendStatus(200);
+    });
+
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
     });
 
     this.db = new Database();
@@ -120,10 +139,6 @@ class LuminaBot {
   setupErrorHandling() {
     this.bot.on('error', (error) => {
       console.error('Bot Error:', error);
-    });
-
-    this.bot.on('polling_error', (error) => {
-      console.error('Polling Error:', error);
     });
   }
 }
