@@ -3,6 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const Promise = require('bluebird');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
 const CommandHandler = require('./handlers/commandHandler');
 const ModerationTools = require('./handlers/moderationTools');
 const EventReminder = require('./handlers/eventReminder');
@@ -11,6 +12,9 @@ const GroupManager = require('./handlers/groupManager');
 const AutoReactHandler = require('./handlers/autoReactHandler');
 const Database = require('./utils/database');
 const config = require('./config');
+
+const PORT = process.env.PORT || 3000;
+const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -43,6 +47,12 @@ class LuminaBot {
     this.bot = new TelegramBot(config.BOT_TOKEN, {
       polling: true,
       filepath: false
+    });
+
+    const app = express();
+    app.use(express.json());
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
     });
 
     this.db = new Database();
@@ -91,6 +101,9 @@ class LuminaBot {
     this.bot.on('new_chat_members', async (msg) => {
       try {
         await this.groupManager.handleNewMember(msg);
+        
+        const notificationCommand = require('./commands/notification');
+        await notificationCommand.notifyOwnerOnGroupJoin(this.bot, msg);
       } catch (error) {
         console.error('Error handling new member:', error);
       }
