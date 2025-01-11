@@ -25,17 +25,13 @@ module.exports = {
         return bot.sendMessage(chatId, '🔍 No images found for your search.');
       }
 
-      const caption = `🖼️ Search Image Results for "${query}"`;
+      const mediaGroup = images.map(image => ({
+        type: 'photo',
+        media: image.url,
+        caption: images.indexOf(image) === 0 ? `🖼️ Search Image Results for "${query}"` : ''
+      }));
 
-      for (const image of images) {
-        try {
-          await bot.sendPhoto(chatId, image.url, {
-            caption: caption
-          });
-        } catch (sendError) {
-          console.error(`Error sending image: ${image.url}`, sendError);
-        }
-      }
+      await bot.sendMediaGroup(chatId, mediaGroup);
 
     } catch (error) {
       console.error('Image Search Error:', error);
