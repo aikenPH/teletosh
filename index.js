@@ -3,19 +3,14 @@ const TelegramBot = require('node-telegram-bot-api');
 const Promise = require('bluebird');
 const fs = require('fs');
 const path = require('path');
-const express = require('express');
 const CommandHandler = require('./handlers/commandHandler');
 const ModerationTools = require('./handlers/moderationTools');
 const EventReminder = require('./handlers/eventReminder');
 const AutomatedResponses = require('./handlers/automatedResponses');
 const GroupManager = require('./handlers/groupManager');
 const AutoReactHandler = require('./handlers/autoReactHandler');
-const GroupJoinNotifier = require('./handlers/groupJoinNotifier');
 const Database = require('./utils/database');
 const config = require('./config');
-
-const PORT = process.env.PORT || 3000;
-const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -46,23 +41,8 @@ class LuminaBot {
     }
 
     this.bot = new TelegramBot(config.BOT_TOKEN, {
-      webHook: {
-        port: PORT,
-        autoOpen: false
-      }
-    });
-
-    this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
-
-    const app = express();
-    app.use(express.json());
-    app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
-      this.bot.processUpdate(req.body);
-      res.sendStatus(200);
-    });
-
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      polling: true,
+      filepath: false
     });
 
     this.db = new Database();
@@ -72,14 +52,12 @@ class LuminaBot {
     this.automatedResponses = new AutomatedResponses(this.bot, this.db);
     this.groupManager = new GroupManager(this.bot, this.db);
     this.autoReactHandler = new AutoReactHandler(this.bot, this.db);
-    this.groupJoinNotifier = new GroupJoinNotifier(this.bot);
 
     this.setupEventListeners();
     this.loadCommands();
     this.setupErrorHandling();
 
     this.eventReminder.startEventChecking();
-    this.groupJoinNotifier.setupListener();
   }
 
   setupEventListeners() {
@@ -113,7 +91,6 @@ class LuminaBot {
     this.bot.on('new_chat_members', async (msg) => {
       try {
         await this.groupManager.handleNewMember(msg);
-        await this.groupJoinNotifier.handleBotAddedToGroup(msg);
       } catch (error) {
         console.error('Error handling new member:', error);
       }
@@ -144,6 +121,10 @@ class LuminaBot {
     this.bot.on('error', (error) => {
       console.error('Bot Error:', error);
     });
+
+    this.bot.on('polling_error', (error) => {
+      console.error('Polling Error:', error);
+    });
   }
 }
 
@@ -160,4 +141,3 @@ const luminaBot = new LuminaBot();
 console.log('Lumina Bot is running...');
 
 module.exports = LuminaBot;
-   
