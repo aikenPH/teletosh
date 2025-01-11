@@ -41,15 +41,21 @@ module.exports = {
 
       let pageNumber = 1;
       if (args[0]) {
-        const parsedPage = parseInt(args[0], 10);
+        const sanitizedPageInput = args[0].trim();
+        const parsedPage = parseInt(sanitizedPageInput, 10);
         
-        if (isNaN(parsedPage) || parsedPage < 1) {
-          return bot.sendMessage(msg.chat.id, `
-❌ Invalid Page Number!
+        if (isNaN(parsedPage) || parsedPage < 1 || sanitizedPageInput !== parsedPage.toString()) {
+          const errorMessage = `
+❌ <b>Invalid Page Number!</b>
+
 • Please enter a valid number between 1 and ${totalPages}
-• Total Pages: ${totalPages}
-• Usage: /help <page_number>
-          `.trim(), { parse_mode: 'HTML' });
+• Current input: <code>${sanitizedPageInput}</code>
+• Usage: /help &lt;page_number&gt;
+          `.trim();
+
+          return bot.sendMessage(msg.chat.id, errorMessage, { 
+            parse_mode: 'HTML' 
+          });
         }
 
         pageNumber = Math.min(parsedPage, totalPages);
@@ -60,16 +66,16 @@ module.exports = {
       const currentPageCommands = fullCommandList.slice(startIndex, endIndex);
 
       const helpMessage = `
-🤖 Lumina Bot Command Center 🌟
+🤖 <b>Lumina Bot Command Center</b> 🌟
 
-Commands (Page ${pageNumber}/${totalPages}):
+<b>Commands (Page ${pageNumber}/${totalPages}):</b>
 
 ${currentPageCommands.map(cmd => 
   cmd.replace(/</g, '&lt;').replace(/>/g, '&gt;')
 ).join('\n')}
 
-Navigate: Use /help <page_number>
-Total Commands: ${fullCommandList.length}
+<b>Navigate:</b> Use /help &lt;page_number&gt;
+<b>Total Commands:</b> ${fullCommandList.length}
       `.trim();
 
       const helpImageUrl = 'https://i.ibb.co/3YN5ggW/lumina.jpg';
@@ -89,10 +95,9 @@ Total Commands: ${fullCommandList.length}
         } catch (messageError) {
           console.error('Error sending help message:', messageError);
           
-          await bot.sendMessage(msg.chat.id, `
-❌ Failed to send help message.
-Please check bot permissions or message formatting.
-          `.trim());
+          await bot.sendMessage(msg.chat.id, '❌ Failed to send help message. Please try again.', {
+            parse_mode: 'HTML'
+          });
         }
       }
     } catch (error) {
