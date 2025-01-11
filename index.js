@@ -9,8 +9,6 @@ const EventReminder = require('./handlers/eventReminder');
 const AutomatedResponses = require('./handlers/automatedResponses');
 const GroupManager = require('./handlers/groupManager');
 const AutoReactHandler = require('./handlers/autoReactHandler');
-const notificationModule = require('./commands/notification');
-notificationModule.setupPollingErrorHandler(this.bot);
 const Database = require('./utils/database');
 const config = require('./config');
 
