@@ -25,7 +25,6 @@ module.exports = {
         return bot.sendMessage(chatId, '🔍 No images found for your search.');
       }
 
-      // Filter and validate image URLs
       const validImages = await Promise.all(
         images.map(async (image) => {
           try {
@@ -47,7 +46,6 @@ module.exports = {
         return bot.sendMessage(chatId, '❌ Unable to download images. Please try another search.');
       }
 
-      // Send images with error handling
       try {
         const mediaGroup = filteredImages.map((image, index) => ({
           type: 'photo',
@@ -59,7 +57,6 @@ module.exports = {
       } catch (sendError) {
         console.error('Media Group Send Error:', sendError);
         
-        // Fallback to individual image sending
         for (const image of filteredImages) {
           try {
             await bot.sendPhoto(chatId, image.url, {
