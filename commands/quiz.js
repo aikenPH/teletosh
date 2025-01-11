@@ -401,18 +401,18 @@ class PersonalityTest {
 
   async startTest() {
     try {
-      await this.sendQuestion();
+      await this.sendNextQuestion();
     } catch (error) {
       console.error('Error starting personality test:', error);
       await this.bot.sendMessage(this.chatId, 'An error occurred while starting the test. Please try again.');
     }
   }
 
-  async sendQuestion() {
+  async sendNextQuestion() {
     // Check if all questions have been answered
     if (this.currentQuestionIndex >= this.totalQuestions) {
       await this.calculateAndSendResults();
-      return false;
+      return null;
     }
 
     const question = questions[this.currentQuestionIndex];
@@ -438,11 +438,11 @@ Progress: ${this.getProgressBar()}
       });
 
       this.messageId = sentMessage.message_id;
-      return true;
+      return sentMessage;
     } catch (error) {
       console.error('Error sending question:', error);
       await this.bot.sendMessage(this.chatId, 'Failed to send question. Please try again.');
-      return false;
+      return null;
     }
   }
 
@@ -454,7 +454,7 @@ Progress: ${this.getProgressBar()}
     return '▰'.repeat(filledCount) + '▱'.repeat(emptyCount);
   }
 
-  async handleAnswer(msg) {
+  async processAnswer(msg) {
     // Validate user
     if (msg.from.id !== this.userId) {
       await this.bot.sendMessage(this.chatId, 
@@ -481,7 +481,7 @@ Progress: ${this.getProgressBar()}
 
       // Check if test is complete
       if (this.currentQuestionIndex < questions.length) {
-        await this.sendQuestion();
+        await this.sendNextQuestion();
         return true;
       } else {
         await this.calculateAndSendResults();
@@ -581,33 +581,41 @@ The test will begin in 3 seconds...`;
 
       await bot.sendMessage(chatId, welcomeMessage);
 
+      // Create a message handler specifically for this test session
+      const messageHandler = async (replyMsg) => {
+        // Ensure the message is a reply and in the same chat
+        if (!replyMsg.reply_to_message || replyMsg.chat.id !== chatId) return;
+
+        const session = module.exports.activeSessions.get(`${chatId}_${userId}`);
+        
+        if (!session) {
+          // Remove the listener if session no longer exists
+          bot.removeListener('message', messageHandler);
+          return;
+        }
+
+        // Process the answer
+        const continueTest = await session.processAnswer(replyMsg);
+
+        if (!continueTest) {
+          // Test is complete, remove the session and message listener
+          module.exports.activeSessions.delete(`${chatId}_${userId}`);
+          bot.removeListener('message', messageHandler);
+        }
+      };
+
+      // Add the message handler
+      bot.on('message', messageHandler);
+
+      // Start the test after a delay
       setTimeout(async () => {
         const test = new PersonalityTest(bot, chatId, userId, userName);
         module.exports.activeSessions.set(`${chatId}_${userId}`, test);
         await test.startTest();
       }, 3000);
+
     } catch (error) {
       console.error('Error in personality test execution:', error);
-    }
-  },
-
-  async handleMessage(bot, msg) {
-    try {
-      if (!msg.reply_to_message) return;
-
-      const chatId = msg.chat.id;
-      const userId = msg.from.id;
-      const session = module.exports.activeSessions.get(`${chatId}_${userId}`);
-
-      if (!session || session.messageId !== msg.reply_to_message.message_id) return;
-
-      const shouldContinue = await session.handleAnswer(msg);
-      
-      if (!shouldContinue) {
-        module.exports.activeSessions.delete(`${chatId}_${userId}`);
-      }
-    } catch (error) {
-      console.error('Error handling message:', error);
     }
   }
 };
