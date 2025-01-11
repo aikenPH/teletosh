@@ -402,42 +402,30 @@ class PersonalityTest {
     await this.sendQuestion();
   }
 
-  createKeyboard(question) {
-    return {
-      reply_markup: {
-        inline_keyboard: question.options.map((option, index) => [{
-          text: option.text,
-          callback_data: `mbti_${this.currentQuestionIndex}_${option.type}`
-        }])
-      }
-    };
-  }
-
   async sendQuestion() {
     const question = questions[this.currentQuestionIndex];
-    const messageText = `
-Question ${this.currentQuestionIndex + 1}/20:
+    
+    const questionText = `
+📝 Question ${this.currentQuestionIndex + 1}/20
+Personality Test for: @${this.userName}
+
 ${question.text}
 
-Progress: ${this.currentQuestionIndex + 1}/20 [${this.getProgressBar()}]
-`;
+Options:
+${question.options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt.text}`).join('\n')}
 
-    const keyboard = this.createKeyboard(question);
+Progress: ${this.getProgressBar()}
+⚠️ Reply with A, B, C, or D to answer`;
 
-    if (this.messageId) {
-      try {
-        await this.bot.editMessageText(messageText, {
-          chat_id: this.chatId,
-          message_id: this.messageId,
-          reply_markup: keyboard.reply_markup
-        });
-      } catch (error) {
-        console.error('Error editing message:', error);
+    const sentMessage = await this.bot.sendMessage(this.chatId, questionText, {
+      reply_markup: {
+        force_reply: true,
+        selective: true
       }
-    } else {
-      const sentMessage = await this.bot.sendMessage(this.chatId, messageText, keyboard);
-      this.messageId = sentMessage.message_id;
-    }
+    });
+
+    this.messageId = sentMessage.message_id;
+    return true;
   }
 
   getProgressBar() {
@@ -448,8 +436,25 @@ Progress: ${this.currentQuestionIndex + 1}/20 [${this.getProgressBar()}]
     return '▰'.repeat(filledCount) + '▱'.repeat(emptyCount);
   }
 
-  async handleAnswer(type) {
-    this.answers[type]++;
+  async handleAnswer(msg) {
+    if (msg.from.id !== this.userId) {
+      await this.bot.sendMessage(this.chatId, 
+        `❌ This personality test is for @${this.userName} only. Start your own test!`);
+      return false;
+    }
+
+    const answer = msg.text.toUpperCase().trim();
+    if (!['A', 'B', 'C', 'D'].includes(answer)) {
+      await this.bot.sendMessage(this.chatId, 
+        '❌ Please answer with A, B, C, or D only.');
+      return true;
+    }
+
+    const answerIndex = answer.charCodeAt(0) - 65;
+    const question = questions[this.currentQuestionIndex];
+    const selectedOption = question.options[answerIndex];
+    
+    this.answers[selectedOption.type]++;
     this.currentQuestionIndex++;
 
     if (this.currentQuestionIndex < questions.length) {
@@ -462,14 +467,12 @@ Progress: ${this.currentQuestionIndex + 1}/20 [${this.getProgressBar()}]
   }
 
   determineType() {
-    const type = [
+    return [
       this.answers.E > this.answers.I ? 'E' : 'I',
       this.answers.S > this.answers.N ? 'S' : 'N',
       this.answers.T > this.answers.F ? 'T' : 'F',
       this.answers.J > this.answers.P ? 'J' : 'P'
     ].join('');
-    
-    return type;
   }
 
   async calculateAndSendResults() {
@@ -493,18 +496,22 @@ ${typeInfo.traits.map(trait => `• ${trait}`).join('\n')}
 📝 Description:
 ${typeInfo.description}
 
-Want to learn more about your type? Visit: www.16personalities.com/${type.toLowerCase()}-personality
-`;
+Want to learn more about your type? Visit: www.16personalities.com/${type.toLowerCase()}-personality`;
 
     try {
-      await this.bot.deleteMessage(this.chatId, this.messageId);
-
       await this.bot.sendPhoto(this.chatId, typeInfo.imageUrl, {
         caption: resultMessage
       });
     } catch (error) {
-      console.error('Error sending results:', error);
-      await this.bot.sendMessage(this.chatId, resultMessage);
+      console.error('Error sending results with image:', error);
+      try {
+        await this.bot.sendMessage(this.chatId, resultMessage);
+      } catch (fallbackError) {
+        console.error('Failed to send results:', fallbackError);
+        await this.bot.sendMessage(this.chatId, 
+          `Test completed! Your personality type is: ${type}\nPlease try /personality again if you'd like to see full results.`
+        );
+      }
     }
   }
 }
@@ -535,13 +542,13 @@ Welcome to the MBTI Personality Test, @${userName}!
 This test will help determine your personality type based on the Myers-Briggs Type Indicator system.
 
 • The test consists of 20 questions
-• Each question has two options
+• Each question has four options (A, B, C, D)
 • Choose the option that best describes you
+• Simply reply with the letter of your choice (A, B, C, or D)
 • Be honest - there are no right or wrong answers
 • The test takes about 5-10 minutes to complete
 
-Ready to discover your personality type?
-`;
+The test will begin in 3 seconds...`;
 
     await bot.sendMessage(chatId, welcomeMessage);
 
@@ -552,34 +559,16 @@ Ready to discover your personality type?
     }, 3000);
   },
 
-  async handleCallback(bot, query) {
-    const [prefix, questionIndex, answerType] = query.data.split('_');
-    
-    if (prefix !== 'mbti') return;
+  async handleMessage(bot, msg) {
+    if (!msg.reply_to_message) return;
 
-    const chatId = query.message.chat.id;
-    const userId = query.from.id;
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
     const session = module.exports.activeSessions.get(`${chatId}_${userId}`);
 
-    if (!session) {
-      await bot.answerCallbackQuery(query.id, {
-        text: "This test session has expired. Please start a new test.",
-        show_alert: true
-      });
-      return;
-    }
+    if (!session || session.messageId !== msg.reply_to_message.message_id) return;
 
-    if (session.userId !== userId) {
-      await bot.answerCallbackQuery(query.id, {
-        text: "This is not your test! Please start your own test.",
-        show_alert: true
-      });
-      return;
-    }
-
-    await bot.answerCallbackQuery(query.id);
-    
-    const shouldContinue = await session.handleAnswer(answerType);
+    const shouldContinue = await session.handleAnswer(msg);
     
     if (!shouldContinue) {
       module.exports.activeSessions.delete(`${chatId}_${userId}`);
