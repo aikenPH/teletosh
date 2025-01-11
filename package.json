@@ -1,0 +1,27 @@
+{
+  "name": "lumina-bot",
+  "version": "1.1.0",
+  "description": "An intelligent and user-friendly Telegram bot with various features",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "JohnDev19",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "bluebird": "^3.7.2",
+    "chalk": "^5.4.1",
+    "dotenv": "^16.0.3",
+    "gradient-string": "^3.0.0",
+    "node-telegram-bot-api": "^0.58.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
