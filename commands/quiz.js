@@ -53,8 +53,7 @@ ${this.decodeHtml(this.currentQuestion.question)}
 Answers:
 ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.decodeHtml(answer)}`).join('\n')}
 
-⚠️ Only @${this.userName} can answer this question!
-    `;
+⚠️ Only @${this.userName} can answer this question!`;
 
     const sentMessage = await this.bot.sendMessage(this.chatId, questionText, {
       reply_markup: {
@@ -98,10 +97,8 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
   }
 
   async endQuiz() {
-    // Calculate percentage score
     const percentage = (this.score / this.totalQuestions) * 100;
     
-    // Determine medal and message based on score
     let resultData = {
       imageUrl: '',
       title: '',
@@ -111,29 +108,30 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
     if (percentage === 100) {
       resultData = {
         imageUrl: 'https://i.ibb.co/6Wp139Q/gold-medal.png',
-        title: '🏆 Perfect Score! Gold Medal',
-        description: 'Congratulations! You achieved a perfect score. Absolutely brilliant performance!'
+        title: '🏆 PERFECT SCORE! GOLD MEDAL',
+        description: 'Congratulations! You achieved a perfect score!'
       };
     } else if (percentage >= 70) {
       resultData = {
         imageUrl: 'https://i.ibb.co/K5B0m5z/star.png',
-        title: '🥈 Excellent! Silver Medal',
-        description: 'Great job! You showed impressive knowledge.'
+        title: '🥈 EXCELLENT! SILVER MEDAL',
+        description: 'Great job! You showed impressive knowledge!'
       };
     } else if (percentage >= 50) {
       resultData = {
         imageUrl: 'https://i.ibb.co/D89nFpH/bronze-medal.png',
-        title: '🥉 Good Effort! Bronze Medal',
-        description: 'Nice work! Keep practicing to improve your score.'
+        title: '🥉 GOOD EFFORT! BRONZE MEDAL',
+        description: 'Nice work! Keep practicing to improve!'
       };
     } else {
       resultData = {
         imageUrl: 'https://i.ibb.co/JFyJm3Q/coin.png',
-        title: '🎖️ Participation Award',
-        description: 'Thanks for participating! Keep learning and try again.'
+        title: '🎖️ PARTICIPATION AWARD',
+        description: 'Thanks for participating! Try again!'
       };
     }
 
+    // Create a clean result message without markdown
     const resultMessage = `
 🎯 Quiz Results for @${this.userName}
 
@@ -144,23 +142,23 @@ ${resultData.description}
 • Correct Answers: ${this.score}/${this.totalQuestions}
 • Accuracy: ${percentage.toFixed(1)}%
 
-🌟 Keep challenging yourself!
-    `;
+🌟 Keep challenging yourself!`;
 
     try {
+      // Send photo with caption, no parse_mode
       await this.bot.sendPhoto(this.chatId, resultData.imageUrl, {
-        caption: resultMessage,
-        parse_mode: 'Markdown'
+        caption: resultMessage
       });
     } catch (error) {
       console.error('Failed to send result with image:', error);
       try {
-        await this.bot.sendMessage(this.chatId, resultMessage, {
-          parse_mode: 'Markdown'
-        });
+        // Fallback to text message, no parse_mode
+        await this.bot.sendMessage(this.chatId, resultMessage);
       } catch (fallbackError) {
         console.error('Failed to send result message:', fallbackError);
-        await this.bot.sendMessage(this.chatId, 
+        // Ultimate fallback with minimal formatting
+        await this.bot.sendMessage(
+          this.chatId, 
           `Quiz completed! Final score: ${this.score}/${this.totalQuestions} (${percentage.toFixed(1)}%)`
         );
       }
