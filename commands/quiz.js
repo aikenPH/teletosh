@@ -8,7 +8,7 @@ class QuizGame {
     this.userName = userName;
     this.currentQuestionIndex = 0;
     this.score = 0;
-    this.totalQuestions = 20;
+    this.totalQuestions = 5;
     this.questions = [];
     this.currentQuestion = null;
     this.messageId = null;
