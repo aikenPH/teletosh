@@ -97,15 +97,19 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
     let medalUrl = '';
     let medalDescription = '';
 
+    // Determine medal based on score
     if (this.score === this.totalQuestions) {
       medalUrl = 'https://i.ibb.co/6Wp139Q/gold-medal.png';
       medalDescription = 'Perfect Score! 🏆 Gold Medal';
     } else if (this.score >= Math.floor(this.totalQuestions * 0.7)) {
       medalUrl = 'https://i.ibb.co/K5B0m5z/star.png';
       medalDescription = 'Great Job! 🥈 Silver Medal';
-    } else {
+    } else if (this.score >= Math.floor(this.totalQuestions * 0.5)) {
       medalUrl = 'https://i.ibb.co/D89nFpH/bronze-medal.png';
-      medalDescription = '👍 Participation Medal';
+      medalDescription = '👍 Bronze Medal';
+    } else {
+      medalUrl = 'https://i.ibb.co/JFyJm3Q/coin.png';
+      medalDescription = '🎖️ Participation Award';
     }
 
     const resultMessage = `
@@ -119,11 +123,20 @@ ${medalDescription}
     `;
 
     try {
+      // Attempt to send photo with caption
       await this.bot.sendPhoto(this.chatId, medalUrl, {
-        caption: resultMessage
+        caption: resultMessage,
+        parse_mode: 'Markdown'
       });
     } catch (error) {
-      await this.bot.sendMessage(this.chatId, resultMessage);
+      console.error('Failed to send result photo:', error);
+      
+      // Fallback to sending message if photo fails
+      try {
+        await this.bot.sendMessage(this.chatId, `${resultMessage}\n\n🖼️ Medal Image: ${medalUrl}`);
+      } catch (fallbackError) {
+        console.error('Failed to send result message:', fallbackError);
+      }
     }
   }
 
@@ -185,7 +198,7 @@ module.exports = {
             const nextQuestionResult = await activeQuiz.sendQuestion();
             
             if (!nextQuestionResult) {
-              // Quiz is finished
+                            // Quiz is finished
               module.exports.quizSessions.delete(`${chatId}_${userId}`);
               
               // Remove the reply listener
