@@ -12,6 +12,7 @@ class QuizGame {
     this.questions = [];
     this.currentQuestion = null;
     this.messageId = null;
+    this.replyListener = null;
   }
 
   async initializeQuiz() {
@@ -35,7 +36,7 @@ class QuizGame {
   async sendQuestion() {
     if (this.currentQuestionIndex >= this.totalQuestions) {
       await this.endQuiz();
-      return;
+      return false;
     }
 
     this.currentQuestion = this.questions[this.currentQuestionIndex];
@@ -56,17 +57,25 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
 ⚠️ Only @${this.userName} can answer this question!
     `;
 
-    const sentMessage = await this.bot.sendMessage(this.chatId, questionText);
+    const sentMessage = await this.bot.sendMessage(this.chatId, questionText, {
+      reply_markup: {
+        force_reply: true,
+        selective: true
+      }
+    });
+
     this.messageId = sentMessage.message_id;
     this.correctAnswer = this.decodeHtml(this.currentQuestion.correct_answer);
     this.allAnswers = allAnswers;
+
+    return true;
   }
 
   async handleAnswer(msg) {
     // Check if the answer is from the correct user
     if (msg.from.id !== this.userId) {
       await this.bot.sendMessage(this.chatId, `❌ This quiz is for @${this.userName} only. Start your own quiz!`);
-      return;
+      return false;
     }
 
     const userAnswer = msg.text.toUpperCase().trim();
@@ -81,7 +90,7 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
     }
 
     this.currentQuestionIndex++;
-    await this.sendQuestion();
+    return true;
   }
 
   async endQuiz() {
@@ -156,18 +165,43 @@ module.exports = {
 
     // Store the quiz session
     module.exports.quizSessions.set(`${chatId}_${userId}`, quizGame);
+    
+    // Start the first question
     await quizGame.sendQuestion();
 
     // Set up reply listener
-    bot.onReplyToMessage(chatId, quizGame.messageId, async (replyMsg) => {
-      const activeQuiz = module.exports.quizSessions.get(`${chatId}_${userId}`);
-      
-      if (activeQuiz) {
-        await activeQuiz.handleAnswer(replyMsg);
-
-        // Remove quiz session when completed
-        if (activeQuiz.currentQuestionIndex >= activeQuiz.totalQuestions) {
-          module.exports.quizSessions.delete(`${chatId}_${userId}`);
+    quizGame.replyListener = bot.on('message', async (replyMsg) => {
+      // Check if this is a reply to our quiz message
+      if (replyMsg.reply_to_message && 
+          replyMsg.reply_to_message.message_id === quizGame.messageId) {
+        
+        const activeQuiz = module.exports.quizSessions.get(`${chatId}_${userId}`);
+        
+        if (activeQuiz) {
+          const answerResult = await activeQuiz.handleAnswer(replyMsg);
+          
+          // Continue with next question or end quiz
+          if (answerResult && activeQuiz.currentQuestionIndex < activeQuiz.totalQuestions) {
+            const nextQuestionResult = await activeQuiz.sendQuestion();
+            
+            if (!nextQuestionResult) {
+              // Quiz is finished
+              module.exports.quizSessions.delete(`${chatId}_${userId}`);
+              
+              // Remove the reply listener
+              if (activeQuiz.replyListener) {
+                activeQuiz.replyListener.off('message');
+              }
+            }
+          } else {
+            // Quiz is finished
+            module.exports.quizSessions.delete(`${chatId}_${userId}`);
+            
+            // Remove the reply listener
+            if (activeQuiz.replyListener) {
+              activeQuiz.replyListener.off('message');
+            }
+          }
         }
       }
     });
