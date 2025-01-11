@@ -425,12 +425,11 @@ Progress: ${this.getProgressBar()}
     });
 
     this.messageId = sentMessage.message_id;
-    return true;
   }
 
   getProgressBar() {
     const completed = this.currentQuestionIndex;
-    const total = 20;
+    const total = questions.length;
     const filledCount = Math.floor((completed / total) * 10);
     const emptyCount = 10 - filledCount;
     return '▰'.repeat(filledCount) + '▱'.repeat(emptyCount);
@@ -506,12 +505,11 @@ Want to learn more about your type? Visit: www.16personalities.com/${type.toLowe
       console.error('Error sending results with image:', error);
       try {
         await this.bot.sendMessage(this.chatId, resultMessage);
-      } catch (fallbackError) {
-        console.error('Failed to send results:', fallbackError);
-        await this.bot.sendMessage(this.chatId, 
-          `Test completed! Your personality type is: ${type}\nPlease try /personality again if you'd like to see full results.`
-        );
-      }
+    } catch (fallbackError) {
+      console.error('Failed to send results:', fallbackError);
+      await this.bot.sendMessage(this.chatId, 
+        `Test completed! Your personality type is: ${type}\nPlease try /personality again if you'd like to see full results.`
+      );
     }
   }
 }
@@ -554,7 +552,9 @@ The test will begin in 3 seconds...`;
 
     setTimeout(async () => {
       const test = new PersonalityTest(bot, chatId, userId, userName);
+      
       module.exports.activeSessions.set(`${chatId}_${userId}`, test);
+      
       await test.startTest();
     }, 3000);
   },
@@ -564,6 +564,7 @@ The test will begin in 3 seconds...`;
 
     const chatId = msg.chat.id;
     const userId = msg.from.id;
+    
     const session = module.exports.activeSessions.get(`${chatId}_${userId}`);
 
     if (!session || session.messageId !== msg.reply_to_message.message_id) return;
