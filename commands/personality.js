@@ -395,14 +395,13 @@ class PersonalityTest {
       T: 0, F: 0,
       J: 0, P: 0
     };
-    this.messageId = null;
   }
 
-  async startTest() {
-    await this.sendQuestion();
+  async start() {
+    await this.sendNextQuestion();
   }
 
-  async sendQuestion() {
+  async sendNextQuestion() {
     const question = questions[this.currentQuestionIndex];
     
     const questionText = `
@@ -412,60 +411,31 @@ Personality Test for: @${this.userName}
 ${question.text}
 
 Options:
-${question.options.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt.text}`).join('\n')}
+A. ${question.options[0].text}
+B. ${question.options[1].text}
+C. ${question.options[2].text}
+D. ${question.options[3].text}
 
-Progress: ${this.getProgressBar()}
-⚠️ Reply with A, B, C, or D to answer`;
+⚠️ Simply reply to this message with A, B, C, or D`;
 
-    const sentMessage = await this.bot.sendMessage(this.chatId, questionText, {
-      reply_markup: {
-        force_reply: true,
-        selective: true
-      }
-    });
-
-    this.messageId = sentMessage.message_id;
+    await this.bot.sendMessage(this.chatId, questionText);
   }
 
-  getProgressBar() {
-    const completed = this.currentQuestionIndex;
-    const total = questions.length;
-    const filledCount = Math.floor((completed / total) * 10);
-    const emptyCount = 10 - filledCount;
-    return '▰'.repeat(filledCount) + '▱'.repeat(emptyCount);
-  }
-
-  async handleAnswer(msg) {
-    if (msg.from.id !== this.userId) {
-      await this.bot.sendMessage(this.chatId, 
-        `❌ This personality test is for @${this.userName} only. Start your own test!`);
-      return false;
-    }
-
-    const answer = msg.text.toUpperCase().trim();
-    if (!['A', 'B', 'C', 'D'].includes(answer)) {
-      await this.bot.sendMessage(this.chatId, 
-        '❌ Please answer with A, B, C, or D only.');
-      return true;
-    }
-
-    const answerIndex = answer.charCodeAt(0) - 65;
+  processAnswer(answer) {
+    const answerIndex = answer.toUpperCase().charCodeAt(0) - 65;
     const question = questions[this.currentQuestionIndex];
     const selectedOption = question.options[answerIndex];
     
+    // Increment the corresponding personality trait
     this.answers[selectedOption.type]++;
+    
+    // Move to next question
     this.currentQuestionIndex++;
 
-    if (this.currentQuestionIndex < questions.length) {
-      await this.sendQuestion();
-      return true;
-    } else {
-      await this.calculateAndSendResults();
-      return false;
-    }
+    return this.currentQuestionIndex < questions.length;
   }
 
-  determineType() {
+  determinePersonalityType() {
     return [
       this.answers.E > this.answers.I ? 'E' : 'I',
       this.answers.S > this.answers.N ? 'S' : 'N',
@@ -474,8 +444,8 @@ Progress: ${this.getProgressBar()}
     ].join('');
   }
 
-  async calculateAndSendResults() {
-    const type = this.determineType();
+  async sendResults() {
+    const type = this.determinePersonalityType();
     const typeInfo = personalityTypes[type];
 
     const resultMessage = `
@@ -495,29 +465,21 @@ ${typeInfo.traits.map(trait => `• ${trait}`).join('\n')}
 📝 Description:
 ${typeInfo.description}
 
-Want to learn more about your type? Visit: www.16personalities.com/${type.toLowerCase()}-personality`;
+Want to learn more? Visit: www.16personalities.com/${type.toLowerCase()}-personality`;
 
     try {
       await this.bot.sendPhoto(this.chatId, typeInfo.imageUrl, {
         caption: resultMessage
       });
     } catch (error) {
-      console.error('Error sending results with image:', error);
-      try {
-        await this.bot.sendMessage(this.chatId, resultMessage);
-    } catch (fallbackError) {
-      console.error('Failed to send results:', fallbackError);
-      await this.bot.sendMessage(this.chatId, 
-        `Test completed! Your personality type is: ${type}\nPlease try /personality again if you'd like to see full results.`
-      );
+      await this.bot.sendMessage(this.chatId, resultMessage);
     }
   }
 }
 
 module.exports = {
   name: 'personality',
-  description: 'Take a Myers-Briggs Type Indicator (MBTI) personality test',
-  
+  description: 'MBTI Personality Test',
   activeSessions: new Map(),
 
   async execute(bot, msg) {
@@ -525,54 +487,35 @@ module.exports = {
     const userId = msg.from.id;
     const userName = msg.from.username || msg.from.first_name;
 
-    const existingSession = Array.from(module.exports.activeSessions.values())
-      .find(session => session.chatId === chatId);
-
-    if (existingSession) {
-      return bot.sendMessage(chatId, 
-        `❌ A personality test is already in progress for @${existingSession.userName}. Please wait for it to finish.`
-      );
-    }
-
-    const welcomeMessage = `
-Welcome to the MBTI Personality Test, @${userName}!
-
-This test will help determine your personality type based on the Myers-Briggs Type Indicator system.
-
-• The test consists of 20 questions
-• Each question has four options (A, B, C, D)
-• Choose the option that best describes you
-• Simply reply with the letter of your choice (A, B, C, or D)
-• Be honest - there are no right or wrong answers
-• The test takes about 5-10 minutes to complete
-
-The test will begin in 3 seconds...`;
-
-    await bot.sendMessage(chatId, welcomeMessage);
-
-    setTimeout(async () => {
-      const test = new PersonalityTest(bot, chatId, userId, userName);
-      
-      module.exports.activeSessions.set(`${chatId}_${userId}`, test);
-      
-      await test.startTest();
-    }, 3000);
+    // Create and start the test
+    const test = new PersonalityTest(bot, chatId, userId, userName);
+    this.activeSessions.set(chatId, test);
+    
+    await bot.sendMessage(chatId, `Welcome, @${userName}! The personality test will begin shortly...`);
+    await test.start();
   },
 
-  async handleMessage(bot, msg) {
-    if (!msg.reply_to_message) return;
-
+  async handleReply(bot, msg) {
     const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    const session = module.exports.activeSessions.get(`${chatId}_${userId}`);
+    const test = this.activeSessions.get(chatId);
 
-    if (!session || session.messageId !== msg.reply_to_message.message_id) return;
+    if (!test) return;
 
-    const shouldContinue = await session.handleAnswer(msg);
-    
-    if (!shouldContinue) {
-      module.exports.activeSessions.delete(`${chatId}_${userId}`);
+    const validAnswers = ['A', 'B', 'C', 'D'];
+    const answer = msg.text.toUpperCase().trim();
+
+    if (!validAnswers.includes(answer)) {
+      await bot.sendMessage(chatId, 'Please reply with A, B, C, or D');
+      return;
+    }
+
+    const continueTest = test.processAnswer(answer);
+
+    if (continueTest) {
+      await test.sendNextQuestion();
+    } else {
+      await test.sendResults();
+      this.activeSessions.delete(chatId);
     }
   }
 };
