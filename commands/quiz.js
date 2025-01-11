@@ -12,7 +12,6 @@ class QuizGame {
     this.questions = [];
     this.currentQuestion = null;
     this.messageId = null;
-    this.replyListener = null;
   }
 
   async initializeQuiz() {
@@ -89,6 +88,12 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
     }
 
     this.currentQuestionIndex++;
+    
+    if (this.currentQuestionIndex >= this.totalQuestions) {
+      await this.endQuiz();
+      return false;
+    }
+    
     return true;
   }
 
@@ -143,23 +148,22 @@ ${resultData.description}
     `;
 
     try {
-      // Send the result message with the medal image
       await this.bot.sendPhoto(this.chatId, resultData.imageUrl, {
         caption: resultMessage,
         parse_mode: 'Markdown'
-      }).catch(async (error) => {
-        // If image sending fails, send text-only message
-        console.error('Failed to send result with image:', error);
+      });
+    } catch (error) {
+      console.error('Failed to send result with image:', error);
+      try {
         await this.bot.sendMessage(this.chatId, resultMessage, {
           parse_mode: 'Markdown'
         });
-      });
-    } catch (error) {
-      console.error('Error in endQuiz:', error);
-      // Final fallback - simple text message
-      await this.bot.sendMessage(this.chatId, 
-        `Quiz completed! Final score: ${this.score}/${this.totalQuestions} (${percentage.toFixed(1)}%)`
-      );
+      } catch (fallbackError) {
+        console.error('Failed to send result message:', fallbackError);
+        await this.bot.sendMessage(this.chatId, 
+          `Quiz completed! Final score: ${this.score}/${this.totalQuestions} (${percentage.toFixed(1)}%)`
+        );
+      }
     }
   }
 
@@ -199,10 +203,11 @@ module.exports = {
       return bot.sendMessage(chatId, '❌ Failed to load quiz. Please try again.');
     }
 
+    // Store the quiz session
     module.exports.quizSessions.set(`${chatId}_${userId}`, quizGame);
-    await quizGame.sendQuestion();
-
-    quizGame.replyListener = bot.on('message', async (replyMsg) => {
+    
+    // Create message handler function
+    const messageHandler = async (replyMsg) => {
       if (replyMsg.reply_to_message && 
           replyMsg.reply_to_message.message_id === quizGame.messageId) {
         
@@ -211,23 +216,22 @@ module.exports = {
         if (activeQuiz) {
           const answerResult = await activeQuiz.handleAnswer(replyMsg);
           
-          if (answerResult && activeQuiz.currentQuestionIndex < activeQuiz.totalQuestions) {
-            const nextQuestionResult = await activeQuiz.sendQuestion();
-            
-            if (!nextQuestionResult) {
-              module.exports.quizSessions.delete(`${chatId}_${userId}`);
-              if (activeQuiz.replyListener) {
-                activeQuiz.replyListener.off('message');
-              }
-            }
+          if (answerResult) {
+            await activeQuiz.sendQuestion();
           } else {
+            // Quiz is finished or answer was invalid
             module.exports.quizSessions.delete(`${chatId}_${userId}`);
-            if (activeQuiz.replyListener) {
-              activeQuiz.replyListener.off('message');
-            }
+            // Remove the event listener
+            bot.removeListener('message', messageHandler);
           }
         }
       }
-    });
+    };
+
+    // Add message handler
+    bot.on('message', messageHandler);
+    
+    // Start the first question
+    await quizGame.sendQuestion();
   }
 };
