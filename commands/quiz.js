@@ -58,6 +58,8 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
 
     const sentMessage = await this.bot.sendMessage(this.chatId, questionText);
     this.messageId = sentMessage.message_id;
+    this.correctAnswer = this.decodeHtml(this.currentQuestion.correct_answer);
+    this.allAnswers = allAnswers;
   }
 
   async handleAnswer(msg) {
@@ -68,20 +70,14 @@ ${allAnswers.map((answer, index) => `${String.fromCharCode(65 + index)}. ${this.
     }
 
     const userAnswer = msg.text.toUpperCase().trim();
-    const correctAnswer = this.decodeHtml(this.currentQuestion.correct_answer);
-    const allAnswers = [
-      ...this.currentQuestion.incorrect_answers, 
-      this.currentQuestion.correct_answer
-    ].sort(() => Math.random() - 0.5);
-
-    const correctIndex = allAnswers.findIndex(ans => this.decodeHtml(ans) === correctAnswer);
+    const correctIndex = this.allAnswers.findIndex(ans => this.decodeHtml(ans) === this.correctAnswer);
     const correctLetter = String.fromCharCode(65 + correctIndex);
 
     if (userAnswer === correctLetter) {
       this.score++;
       await this.bot.sendMessage(this.chatId, '✅ Correct Answer!');
     } else {
-      await this.bot.sendMessage(this.chatId, `❌ Wrong Answer. Correct was ${correctLetter}. ${this.decodeHtml(correctAnswer)}`);
+      await this.bot.sendMessage(this.chatId, `❌ Wrong Answer. Correct was ${correctLetter}. The correct answer is: ${this.correctAnswer}`);
     }
 
     this.currentQuestionIndex++;
