@@ -3,202 +3,202 @@ const axios = require('axios');
 const questions = [
   {
     id: 1,
-    text: "How do you prefer to spend your free time?",
+    text: "How do you like to spend your free time?",
     options: [
-      { text: "Hosting large, energetic social events with many people", type: "E" },
-      { text: "Networking and meeting new, interesting connections", type: "E/I" },
-      { text: "Deep conversations with close, trusted friends", type: "I" },
-      { text: "Solitary creative or intellectual pursuits", type: "I" }
+      { text: "Hosting big parties with lots of people", type: "E" },
+      { text: "Meeting new people and making connections", type: "E/I" },
+      { text: "Talking with close friends", type: "I" },
+      { text: "Doing things alone, like reading or a hobby", type: "I" }
     ]
   },
   {
     id: 2,
-    text: "When making critical decisions, you primarily:",
+    text: "When making an important decision, you usually:",
     options: [
-      { text: "Use cold, pure logical analysis and statistical data", type: "T" },
-      { text: "Consider logical outcomes with empathetic understanding", type: "T/F" },
-      { text: "Prioritize emotional impact and interpersonal harmony", type: "F" },
-      { text: "Balance emotional intuition with rational assessment", type: "F/T" }
+      { text: "Use pure logic and facts", type: "T" },
+      { text: "Consider logic and people's feelings", type: "T/F" },
+      { text: "Think about how it affects people", type: "F" },
+      { text: "Mix feelings and rational thinking", type: "F/T" }
     ]
   },
   {
     id: 3,
-    text: "Your approach to life's structure is best described as:",
+    text: "Your daily life is mostly:",
     options: [
-      { text: "Rigid, meticulously planned schedules with zero deviation", type: "J" },
-      { text: "Structured frameworks with strategic flexibility", type: "J/P" },
-      { text: "Spontaneous, adaptable, and open-ended lifestyle", type: "P" },
-      { text: "Controlled chaos with periodic strategic planning", type: "P/J" }
+      { text: "Strictly planned with no changes", type: "J" },
+      { text: "Planned but flexible", type: "J/P" },
+      { text: "Spontaneous and unplanned", type: "P" },
+      { text: "Flexible with some planning", type: "P/J" }
     ]
   },
   {
     id: 4,
-    text: "When processing new information, you are most attracted to:",
+    text: "When learning something new, you are interested in:",
     options: [
-      { text: "Concrete, immediately applicable practical facts", type: "S" },
-      { text: "Potential future implications and abstract patterns", type: "N" },
-      { text: "Innovative concepts that challenge existing paradigms", type: "N/S" },
-      { text: "Theoretical frameworks with real-world testing", type: "S/N" }
+      { text: "Practical, useful information", type: "S" },
+      { text: "Big ideas and future possibilities", type: "N" },
+      { text: "New ideas with practical use", type: "N/S" },
+      { text: "Theories that work in real life", type: "S/N" }
     ]
   },
   {
     id: 5,
-    text: "In social gatherings, you typically:",
+    text: "At a social event, you usually:",
     options: [
-      { text: "Become the center of attention and energize the room", type: "E" },
-      { text: "Engage selectively with interesting conversations", type: "E/I" },
-      { text: "Observe and listen more than actively participate", type: "I" },
-      { text: "Prefer deep one-on-one interactions", type: "I" }
+      { text: "Talk to everyone and have fun", type: "E" },
+      { text: "Join interesting conversations", type: "E/I" },
+      { text: "Watch and listen", type: "I" },
+      { text: "Talk with one or two people", type: "I" }
     ]
   },
   {
     id: 6,
-    text: "When resolving conflicts, you most likely:",
+    text: "When solving a conflict, you:",
     options: [
-      { text: "Analyze the situation with pure logical reasoning", type: "T" },
-      { text: "Seek a fair solution that considers everyone's feelings", type: "T/F" },
-      { text: "Prioritize emotional healing and relationship preservation", type: "F" },
-      { text: "Mediate with empathy while maintaining objective standards", type: "F/T" }
+      { text: "Use pure logic", type: "T" },
+      { text: "Look for a fair solution", type: "T/F" },
+      { text: "Focus on feelings and relationships", type: "F" },
+      { text: "Balance emotions and logic", type: "F/T" }
     ]
   },
   {
     id: 7,
-    text: "Your approach to deadlines and projects is:",
+    text: "With work and deadlines, you are:",
     options: [
-      { text: "Completed well ahead of time, perfectly organized", type: "J" },
-      { text: "Planned with buffer time for unexpected challenges", type: "J/P" },
-      { text: "Often working intensely right before the deadline", type: "P" },
-      { text: "Flexible approach with bursts of focused productivity", type: "P/J" }
+      { text: "Always early and well-prepared", type: "J" },
+      { text: "Planned with some extra time", type: "J/P" },
+      { text: "Work best under pressure", type: "P" },
+      { text: "Flexible with bursts of work", type: "P/J" }
     ]
   },
   {
     id: 8,
-    text: "When exploring new ideas or concepts, you:",
+    text: "When looking at new ideas, you prefer:",
     options: [
-      { text: "Prefer proven, practical methodologies", type: "S" },
-      { text: "Seek revolutionary, transformative perspectives", type: "N" },
-      { text: "Blend innovative thinking with practical application", type: "N/S" },
-      { text: "Analyze potential through both theoretical and practical lens", type: "S/N" }
+      { text: "Proven methods that work", type: "S" },
+      { text: "Totally new approaches", type: "N" },
+      { text: "New ideas with practical use", type: "N/S" },
+      { text: "Checking ideas from different angles", type: "S/N" }
     ]
   },
   {
     id: 9,
-    text: "At a party or social event, your energy level:",
+    text: "At a party, your energy:",
     options: [
-      { text: "Increases dramatically, becoming more animated", type: "E" },
-      { text: "Fluctuates between engagement and needing breaks", type: "E/I" },
-      { text: "Gradually depletes, feeling overwhelmed", type: "I" },
-      { text: "Remains steady with selective, meaningful interactions", type: "I" }
+      { text: "Increases and you get more active", type: "E" },
+      { text: "Goes up and down", type: "E/I" },
+      { text: "Slowly goes down", type: "I" },
+      { text: "Stays the same with few talks", type: "I" }
     ]
   },
   {
     id: 10,
-    text: "When providing feedback or critique, you:",
+    text: "When giving feedback, you:",
     options: [
-      { text: "Deliver direct, unfiltered analytical assessment", type: "T" },
-      { text: "Balance honesty with compassionate delivery", type: "T/F" },
-      { text: "Prioritize emotional support and positive reinforcement", type: "F" },
-      { text: "Wrap constructive criticism in empathetic understanding", type: "F/T" }
+      { text: "Are direct and straight to the point", type: "T" },
+      { text: "Try to be honest but kind", type: "T/F" },
+      { text: "Focus on supporting the person", type: "F" },
+      { text: "Give advice with care", type: "F/T" }
     ]
   },
   {
     id: 11,
-    text: "Your ideal workspace is:",
+    text: "Your workspace is usually:",
     options: [
-      { text: "Meticulously organized with everything in its place", type: "J" },
-      { text: "Structured but with creative flexibility", type: "J/P" },
-      { text: "Dynamic and adaptable, minimal rigid structures", type: "P" },
-      { text: "Organized chaos with strategic creative zones", type: "P/J" }
+      { text: "Very organized and neat", type: "J" },
+      { text: "Structured but creative", type: "J/P" },
+      { text: "Messy and changing", type: "P" },
+      { text: "Organized but with creative spaces", type: "P/J" }
     ]
   },
   {
     id: 12,
-    text: "When encountering complex problems, you:",
+    text: "When facing a hard problem, you:",
     options: [
-      { text: "Apply systematic, proven problem-solving techniques", type: "S" },
-      { text: "Explore innovative, unconventional solution paths", type: "N" },
-      { text: "Combine practical insights with creative thinking", type: "N/S" },
-      { text: "Analyze from multiple theoretical and practical angles", type: "S/N" }
+      { text: "Use standard problem-solving steps", type: "S" },
+      { text: "Look for creative solutions", type: "N" },
+      { text: "Mix practical and creative thinking", type: "N/S" },
+      { text: "Look at the problem from many sides", type: "S/N" }
     ]
   },
   {
     id: 13,
-    text: "In group discussions, your communication style is:",
+    text: "In group talks, you:",
     options: [
-      { text: "Assertive and direct leadership", type: "E" },
-      { text: "Strategic, selective engagement", type: "E/I" },
-      { text: "Thoughtful, measured contributions", type: "I" },
-      { text: "Reflective listening with occasional insights", type: "I" }
+      { text: "Lead and direct the conversation", type: "E" },
+      { text: "Join when it's interesting", type: "E/I" },
+      { text: "Speak carefully and rarely", type: "I" },
+      { text: "Listen most of the time", type: "I" }
     ]
   },
   {
     id: 14,
-    text: "Your decision-making process prioritizes:",
+    text: "When making choices, you care most about:",
     options: [
-      { text: "Objective, data-driven rational analysis", type: "T" },
-      { text: "Logical reasoning with emotional intelligence", type: "T/F" },
-      { text: "Emotional resonance and interpersonal harmony", type: "F" },
-      { text: "Empathetic understanding with logical framework", type: "F/T" }
+      { text: "Clear facts and data", type: "T" },
+      { text: "Logic and how people feel", type: "T/F" },
+      { text: "How it affects relationships", type: "F" },
+      { text: "Feelings with a logical base", type: "F/T" }
     ]
   },
   {
     id: 15,
-    text: "When planning a trip or project, you prefer:",
+    text: "When planning a trip, you prefer:",
     options: [
-      { text: "Comprehensive, detailed itinerary with no surprises", type: "J" },
-      { text: "Structured plan with room for spontaneous exploration", type: "J/P" },
-      { text: "Minimal planning, embracing unexpected opportunities", type: "P" },
-      { text: "Flexible framework with strategic checkpoints", type: "P/J" }
+      { text: "Everything planned in detail", type: "J" },
+      { text: "A plan with some free time", type: "J/P" },
+      { text: "Minimal planning", type: "P" },
+      { text: "Some planning with room to change", type: "P/J" }
     ]
   },
   {
     id: 16,
-    text: "Your intellectual curiosity is most driven by:",
+    text: "What drives your curiosity most?",
     options: [
-      { text: "Tangible, immediately applicable knowledge", type: "S" },
-      { text: "Abstract, transformative conceptual frameworks", type: "N" },
-      { text: "Innovative ideas with practical potential", type: "N/S" },
-      { text: "Comprehensive understanding bridging theory and practice", type: "S/N" }
+      { text: "Useful, practical knowledge", type: "S" },
+      { text: "Big, complex ideas", type: "N" },
+      { text: "New ideas that can be used", type: "N/S" },
+      { text: "Understanding things from all sides", type: "S/N" }
     ]
   },
   {
     id: 17,
-    text: "In collaborative environments, you typically:",
+    text: "When working with others, you:",
     options: [ 
-      { text: "Take charge and lead the group towards a common goal", type: "E" },
-      { text: "Facilitate discussions while contributing ideas", type: "E/I" },
-      { text: "Support others' ideas and provide thoughtful feedback", type: "I" },
-      { text: "Prefer to work independently but contribute when needed", type: "I" }
+      { text: "Take charge and lead", type: "E" },
+      { text: "Help guide the discussion", type: "E/I" },
+      { text: "Support others' ideas", type: "I" },
+      { text: "Work alone but help when needed", type: "I" }
     ]
   },
   {
     id: 18,
-    text: "When faced with a new challenge, you tend to:",
+    text: "When facing a new challenge, you:",
     options: [
-      { text: "Dive in headfirst, eager to tackle it immediately", type: "E" },
-      { text: "Assess the situation before taking action", type: "E/I" },
-      { text: "Reflect on the implications and potential outcomes", type: "I" },
-      { text: "Analyze the challenge from multiple perspectives", type: "I" }
+      { text: "Jump in right away", type: "E" },
+      { text: "Think about it first", type: "E/I" },
+      { text: "Consider all possible outcomes", type: "I" },
+      { text: "Analyze the challenge carefully", type: "I" }
     ]
   },
   {
     id: 19,
-    text: "Your preferred method of learning is:",
+    text: "How do you like to learn?",
     options: [
-      { text: "Hands-on experience and practical application", type: "S" },
-      { text: "Exploring theories and abstract concepts", type: "N" },
-      { text: "Combining practical exercises with theoretical insights", type: "N/S" },
-      { text: "Understanding concepts through real-world examples", type: "S/N" }
+      { text: "By doing things hands-on", type: "S" },
+      { text: "By exploring new theories", type: "N" },
+      { text: "Mixing practical and theoretical learning", type: "N/S" },
+      { text: "Using real-world examples", type: "S/N" }
     ]
   },
   {
     id: 20,
-    text: "In your relationships, you value:",
+    text: "In relationships, you value:",
     options: [
-      { text: "Open communication and shared experiences", type: "E" },
-      { text: "Meaningful connections and deep understanding", type: "E/I" },
-      { text: "Emotional support and mutual respect", type: "I" },
-      { text: "A balance of independence and togetherness", type: "I" }
+      { text: "Lots of communication and sharing", type: "E" },
+      { text: "Deep and meaningful connections", type: "E/I" },
+      { text: "Emotional support", type: "I" },
+      { text: "Having your own space", type: "I" }
     ]
   }
 ];
@@ -409,7 +409,6 @@ class PersonalityTest {
   }
 
   async sendNextQuestion() {
-    // Check if all questions have been answered
     if (this.currentQuestionIndex >= this.totalQuestions) {
       await this.calculateAndSendResults();
       return null;
@@ -455,14 +454,12 @@ Progress: ${this.getProgressBar()}
   }
 
   async processAnswer(msg) {
-    // Validate user
     if (msg.from.id !== this.userId) {
       await this.bot.sendMessage(this.chatId, 
         `❌ This personality test is for @${this.userName} only. Start your own test!`);
       return false;
     }
 
-    // Validate answer
     const answer = msg.text.toUpperCase().trim();
     if (!['A', 'B', 'C', 'D'].includes(answer)) {
       await this.bot.sendMessage(this.chatId, 
@@ -475,11 +472,9 @@ Progress: ${this.getProgressBar()}
       const question = questions[this.currentQuestionIndex];
       const selectedOption = question.options[answerIndex];
       
-      // Update answers
       this.answers[selectedOption.type]++;
       this.currentQuestionIndex++;
 
-      // Check if test is complete
       if (this.currentQuestionIndex < questions.length) {
         await this.sendNextQuestion();
         return true;
@@ -495,7 +490,6 @@ Progress: ${this.getProgressBar()}
   }
 
   determineType() {
-    // Determine personality type based on highest trait scores
     return [
       this.answers.E > this.answers.I ? 'E' : 'I',
       this.answers.S > this.answers.N ? 'S' : 'N',
@@ -515,10 +509,14 @@ Progress: ${this.getProgressBar()}
 Your Type: ${type} - ${typeInfo.title}
 
 📊 Type Breakdown:
-• Extraversion (E) vs Introversion (I): ${this.answers.E}-${this.answers.I}
-• Sensing (S) vs Intuition (N): ${this.answers.S}-${this.answers.N}
-• Thinking (T) vs Feeling (F): ${this.answers.T}-${this.answers.F}
-• Judging (J) vs Perceiving (P): ${this.answers.J}-${this.answers.P}
+> Extraversion vs Introversion:
+${this.answers.E}-${this.answers.I}
+> Sensing vs Intuition:
+${this.answers.S}-${this.answers.N}
+> Thinking vs Feeling:
+${this.answers.T}-${this.answers.F}
+> Judging vs Perceiving:
+${this.answers.J}-${this.answers.P}
 
 ✨ Key Traits:
 ${typeInfo.traits.map(trait => `• ${trait}`).join('\n')}
@@ -526,7 +524,9 @@ ${typeInfo.traits.map(trait => `• ${trait}`).join('\n')}
 📝 Description:
 ${typeInfo.description}
 
-Want to learn more about your type? Visit: www.16personalities.com/${type.toLowerCase()}-personality`;
+Want to learn more about your type? 
+
+Visit: www.16personalities.com/${type.toLowerCase()}-personality`;
 
       try {
         await this.bot.sendPhoto(this.chatId, typeInfo.imageUrl, {
@@ -555,7 +555,6 @@ module.exports = {
       const userId = msg.from.id;
       const userName = msg.from.username || msg.from.first_name;
 
-      // Check for existing session in this chat
       const existingSession = Array.from(module.exports.activeSessions.values())
         .find(session => session.chatId === chatId);
 
@@ -566,48 +565,41 @@ module.exports = {
       }
 
       const welcomeMessage = `
-Welcome to the MBTI Personality Test, @${userName}!
+🎯 Welcome to the MBTI Personality Test, @${userName}!
 
 This test will help determine your personality type based on the Myers-Briggs Type Indicator system.
 
-• The test consists of ${questions.length} questions
-• Each question has four options (A, B, C, D)
-• Choose the option that best describes you
-• Simply reply with the letter of your choice (A, B, C, or D)
-• Be honest - there are no right or wrong answers
-• The test takes about 5-10 minutes to complete
+✅ The test consists of ${questions.length} questions
+✅ Each question has four options (A, B, C, D)
+✅ Choose the option that best describes you
+✅ Simply reply with the letter of your choice (A, B, C, or D)
+✅ Be honest - there are no right or wrong answers
+✅ The test takes about 5-10 minutes to complete
 
 The test will begin in 3 seconds...`;
 
       await bot.sendMessage(chatId, welcomeMessage);
 
-      // Create a message handler specifically for this test session
       const messageHandler = async (replyMsg) => {
-        // Ensure the message is a reply and in the same chat
         if (!replyMsg.reply_to_message || replyMsg.chat.id !== chatId) return;
 
         const session = module.exports.activeSessions.get(`${chatId}_${userId}`);
         
         if (!session) {
-          // Remove the listener if session no longer exists
           bot.removeListener('message', messageHandler);
           return;
         }
 
-        // Process the answer
         const continueTest = await session.processAnswer(replyMsg);
 
         if (!continueTest) {
-          // Test is complete, remove the session and message listener
           module.exports.activeSessions.delete(`${chatId}_${userId}`);
           bot.removeListener('message', messageHandler);
         }
       };
 
-      // Add the message handler
       bot.on('message', messageHandler);
 
-      // Start the test after a delay
       setTimeout(async () => {
         const test = new PersonalityTest(bot, chatId, userId, userName);
         module.exports.activeSessions.set(`${chatId}_${userId}`, test);
