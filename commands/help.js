@@ -58,7 +58,22 @@ module.exports = {
           });
         }
 
-        pageNumber = Math.min(parsedPage, totalPages);
+        if (parsedPage > totalPages) {
+          const errorMessage = `
+❌ <b>Page Number Exceeded!</b>
+
+• Maximum page number is ${totalPages}
+• Current input: <code>${parsedPage}</code>
+• Available pages: 1 to ${totalPages}
+• Usage: /help &lt;page_number&gt;
+          `.trim();
+
+          return bot.sendMessage(msg.chat.id, errorMessage, { 
+            parse_mode: 'HTML' 
+          });
+        }
+
+        pageNumber = parsedPage;
       }
 
       const startIndex = (pageNumber - 1) * commandsPerPage;
