@@ -509,14 +509,14 @@ Progress: ${this.getProgressBar()}
 Your Type: ${type} - ${typeInfo.title}
 
 📊 Type Breakdown:
-> Extraversion vs Introversion:
-${this.answers.E}-${this.answers.I}
-> Sensing vs Intuition:
-${this.answers.S}-${this.answers.N}
-> Thinking vs Feeling:
-${this.answers.T}-${this.answers.F}
-> Judging vs Perceiving:
-${this.answers.J}-${this.answers.P}
+• Extraversion: ${this.answers.E}
+• Introversion: ${this.answers.I}
+• Sensing: ${this.answers.S}
+• Intuition: ${this.answers.N}
+• Thinking: ${this.answers.T}
+• Feeling: ${this.answers.F}
+• Judging: ${this.answers.J}
+• Perceiving: ${this.answers.P}
 
 ✨ Key Traits:
 ${typeInfo.traits.map(trait => `• ${trait}`).join('\n')}
