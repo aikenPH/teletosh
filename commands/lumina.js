@@ -60,13 +60,18 @@ module.exports = {
 
       // Prepare response
       if (response.data && response.data.response) {
-        const aiResponse = response.data.response;
+        // Filter and modify the response
+        let aiResponse = response.data.response;
+        
+        // Replace asterisks with arrow symbols
+        aiResponse = aiResponse.replace(/\*/g, '➤');
 
         // Generate unique filename
         const gttsPath = path.join(tempDir, `lumina_voice_${Date.now()}.mp3`);
         
-        // Create GTTS instance with full response
+        // Create GTTS instance with full response and increased speed
         const gttsInstance = new gtts(aiResponse, 'en-US');
+        gttsInstance.speed = 1.5; // Faster speech rate
 
         // Save voice file
         await new Promise((resolve, reject) => {
@@ -86,13 +91,9 @@ module.exports = {
             try {
               // Send text message with voice attachment
               await bot.sendMessage(msg.chat.id, aiResponse, {
-                reply_to_message_id: msg.message_id
-              });
-
-              // Send voice file
-              await bot.sendVoice(msg.chat.id, gttsPath, {
-                caption: 'AI Response in Voice',
-                reply_to_message_id: msg.message_id
+                reply_to_message_id: msg.message_id,
+                // Send voice as an attachment in the same message
+                audio: gttsPath
               });
 
               // Clean up temporary file
