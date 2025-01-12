@@ -48,6 +48,20 @@ class Database {
     user.points += points;
     this.updateUser(userId, user);
   }
+
+  clearCache() {
+    try {
+      this.data = {
+        reminders: [],
+        users: {},
+        chats: {}
+      };
+      this.saveData();
+      console.log('Database cache cleared successfully');
+    } catch (error) {
+      console.error('Error clearing database cache:', error);
+    }
+  }
 }
 
 module.exports = Database;
