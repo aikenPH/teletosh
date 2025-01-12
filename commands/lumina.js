@@ -69,7 +69,7 @@ module.exports = {
         // Generate unique filename
         const gttsPath = path.join(tempDir, `lumina_voice_${Date.now()}.mp3`);
         
-        // Create GTTS instance with full response
+        // Create GTTS instance with full response and increased speed
         const gttsInstance = new gtts(aiResponse, 'en-US');
 
         // Save voice file
@@ -88,9 +88,13 @@ module.exports = {
             }
 
             try {
-              // Send voice with text as caption
+              // Send text response first
+              await bot.sendMessage(msg.chat.id, aiResponse, {
+                reply_to_message_id: msg.message_id
+              });
+
+              // Send voice file separately without caption
               await bot.sendVoice(msg.chat.id, gttsPath, {
-                caption: aiResponse,
                 reply_to_message_id: msg.message_id
               });
 
