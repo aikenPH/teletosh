@@ -96,8 +96,7 @@ module.exports = {
 
       const responseMessage = `
 🔐 Generated Passwords:
-
-${passwords.join('<br>')}
+${passwords.join('\n')}
       `;
 
       await bot.sendMessage(msg.chat.id, responseMessage, {
