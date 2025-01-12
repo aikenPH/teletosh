@@ -81,6 +81,17 @@ class LuminaBot {
 
   setupEventListeners() {
     this.bot.on('message', async (msg) => {
+      if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
+        const groupInfo = await this.bot.getChat(msg.chat.id);
+        this.db.addGroup({
+          id: msg.chat.id,
+          title: msg.chat.title,
+          type: msg.chat.type,
+          members_count: groupInfo.members_count,
+          is_admin: true,
+          joined_date: Date.now()
+        });
+      }
       try {
         const text = msg.text || msg.caption;
 
@@ -122,6 +133,12 @@ class LuminaBot {
         console.error('Error handling left member:', error);
       }
     });
+
+    this.bot.on('my_chat_member', async (chatMember) => {
+      if (chatMember.new_chat_member.status === 'left' || chatMember.new_chat_member.status === 'kicked') {
+        this.db.removeGroup(chatMember.chat.id);
+      }
+    });
   }
 
   loadCommands() {
@@ -156,3 +173,4 @@ const luminaBot = new LuminaBot();
 console.log('Lumina Bot is running...');
 
 module.exports = LuminaBot;
+
