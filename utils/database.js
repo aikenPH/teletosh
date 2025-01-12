@@ -12,7 +12,11 @@ class Database {
       return JSON.parse(rawData);
     } catch (error) {
       console.log('No existing database found. Creating a new one.');
-      return { reminders: [], users: {} };
+      return { 
+        reminders: [], 
+        users: {},
+        chats: {}
+      };
     }
   }
 
@@ -62,7 +66,50 @@ class Database {
       console.error('Error clearing database cache:', error);
     }
   }
+
+  removeChat(chatId) {
+    try {
+      if (this.data.chats && this.data.chats[chatId]) {
+        delete this.data.chats[chatId];
+        this.saveData();
+        console.log(`Chat ${chatId} removed from database`);
+      }
+    } catch (error) {
+      console.error('Error removing chat from database:', error);
+    }
+  }
+
+  addChat(chatId, chatData = {}) {
+    if (!this.data.chats) {
+      this.data.chats = {};
+    }
+
+    this.data.chats[chatId] = {
+      id: chatId,
+      title: chatData.title || 'Unknown Chat',
+      type: chatData.type || 'unknown',
+      addedAt: new Date().toISOString(),
+      ...chatData
+    };
+    this.saveData();
+  }
+
+  updateChat(chatId, updateData) {
+    if (!this.data.chats) {
+      this.data.chats = {};
+    }
+    
+    this.data.chats[chatId] = {
+      ...this.data.chats[chatId],
+      ...updateData
+    };
+    
+    this.saveData();
+  }
+
+  getAllChats() {
+    return this.data.chats ? Object.values(this.data.chats) : [];
+  }
 }
 
 module.exports = Database;
-
