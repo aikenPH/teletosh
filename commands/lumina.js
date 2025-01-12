@@ -69,9 +69,8 @@ module.exports = {
         // Generate unique filename
         const gttsPath = path.join(tempDir, `lumina_voice_${Date.now()}.mp3`);
         
-        // Create GTTS instance with full response and increased speed
+        // Create GTTS instance with full response
         const gttsInstance = new gtts(aiResponse, 'en-US');
-        gttsInstance.speed = 1.5; // Faster speech rate
 
         // Save voice file
         await new Promise((resolve, reject) => {
@@ -79,7 +78,7 @@ module.exports = {
             if (error) {
               console.error("Voice Generation Error:", error);
               
-              // Fallback to text message if voice fails
+              // Send only text message if voice fails
               await bot.sendMessage(msg.chat.id, aiResponse, {
                 reply_to_message_id: msg.message_id
               });
@@ -89,11 +88,10 @@ module.exports = {
             }
 
             try {
-              // Send text message with voice attachment
-              await bot.sendMessage(msg.chat.id, aiResponse, {
-                reply_to_message_id: msg.message_id,
-                // Send voice as an attachment in the same message
-                audio: gttsPath
+              // Send voice with text as caption
+              await bot.sendVoice(msg.chat.id, gttsPath, {
+                caption: aiResponse,
+                reply_to_message_id: msg.message_id
               });
 
               // Clean up temporary file
