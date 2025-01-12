@@ -42,12 +42,10 @@ Changed by: @${msg.from.username || 'Unknown'}
       `, { parse_mode: 'HTML' });
 
     } catch (error) {
-      console.error('Title Change Error:', error);
-
       const errorMessage = error.response?.body?.description || 'Unknown error';
 
       if (errorMessage.includes('not enough rights')) {
-        return bot.sendMessage(msg.chat.id, '🚫 Bot lacks permission to change group title. Ensure bot is an admin.');
+        return bot.sendMessage(msg.chat.id, `🚫 Oops! I don't have enough permissions to change the group title. Could you please make sure I'm an admin with the right privileges? 💕`);
       }
 
       bot.sendMessage(msg.chat.id, '❌ Failed to change group title. Please try again later.');
