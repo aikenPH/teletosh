@@ -35,14 +35,7 @@ module.exports = {
 
       } catch (linkError) {
         console.error('Invite Link Generation Error:', linkError);
-
-        let errorMessage = '❌ Could not generate invite link.';
-        
-        if (linkError.message.includes('bot is not a member')) {
-          errorMessage = '❌ I am not a member of the specified group.';
-        }
-
-        await bot.sendMessage(msg.chat.id, errorMessage);
+        await bot.sendMessage(msg.chat.id, `❌ ${linkError.message}`);
       }
 
     } catch (error) {
@@ -54,30 +47,41 @@ module.exports = {
 
 async function generateGroupInviteLink(bot, chatId) {
   try {
-    const chat = await bot.getChat(chatId);
-    
-    if (chat.invite_link) {
-      return chat.invite_link;
-    }
-
     try {
       const inviteLink = await bot.exportChatInviteLink(chatId);
-      return inviteLink;
-    } catch (exportError) {
-      try {
-        const newInviteLink = await bot.createChatInviteLink(chatId, {
-          expire_date: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-          member_limit: 0
-        });
-        return newInviteLink.invite_link;
-      } catch (createLinkError) {
-        if (chatId.toString().startsWith('-100')) {
-          return `https://t.me/+${chatId.toString().replace('-100', '')}`;
-        }
-        throw createLinkError;
+      
+      if (inviteLink && inviteLink.startsWith('https://t.me/')) {
+        return inviteLink;
       }
+    } catch (exportError) {}
+
+    try {
+      const newInviteLink = await bot.createChatInviteLink(chatId, {
+        expire_date: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+        member_limit: 0
+      });
+
+      if (newInviteLink.invite_link && newInviteLink.invite_link.startsWith('https://t.me/')) {
+        return newInviteLink.invite_link;
+      }
+    } catch (createError) {}
+
+    const chatUsername = await getChatUsername(bot, chatId);
+    if (chatUsername) {
+      return `https://t.me/${chatUsername}`;
     }
+
+    throw new Error('Unable to generate a valid invite link');
   } catch (error) {
-    throw new Error('Unable to retrieve group invite link');
+    throw error;
+  }
+}
+
+async function getChatUsername(bot, chatId) {
+  try {
+    const chat = await bot.getChat(chatId);
+    return chat.username || null;
+  } catch (error) {
+    return null;
   }
 }
