@@ -12,15 +12,26 @@ class GroupManager {
       const chatId = msg.chat.id;
       const newMember = msg.new_chat_member;
 
-      // Check if the new member is the bot itself
-      if (newMember.is_bot && newMember.username === process.env.BOT_USERNAME) {
+      // Separate handling for bot and user
+      if (this.isBot(newMember)) {
         await this.handleBotAdded(msg);
-      } else {
+      } else if (this.isUser(newMember)) {
         await this.handleUserJoined(msg);
       }
     } catch (error) {
       console.error('Error in handleNewMember:', error);
     }
+  }
+
+  // Check if the member is a bot
+  isBot(member) {
+    return member.is_bot && 
+           member.username === process.env.BOT_USERNAME;
+  }
+
+  // Check if the member is a user
+  isUser(member) {
+    return !member.is_bot;
   }
 
   async handleBotAdded(msg) {
@@ -31,19 +42,7 @@ class GroupManager {
       const introMessage = `
 🤖 *Lumina Bot Introduction* 🌟
 
-Hello! I'm Lumina, your intelligent group management assistant. 
-
-✨ *Features:*
-• Advanced moderation tools
-• Fun interactive commands
-• Customizable group settings
-• User engagement tracking
-
-🛡️ *Moderation Capabilities:*
-• User restriction
-• Spam prevention
-• Welcome messages
-• Group analytics
+Hello! I'm Lumina, your intelligent Telegram assistant. 
 
 👥 *How to get started:*
 • Add me as an admin
@@ -52,7 +51,7 @@ Hello! I'm Lumina, your intelligent group management assistant.
 
 💡 *Tip:* I work best with admin permissions!
 
-*Developed with ❤️ by Your Team*
+*Developed with ❤️ by JohnDev19*
       `;
 
       // Send introduction photo
@@ -85,8 +84,11 @@ Hello! I'm Lumina, your intelligent group management assistant.
     try {
       const chatId = msg.chat.id;
       const newMember = msg.new_chat_member;
-      const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
 
+      // Prevent processing if the new member is a bot
+      if (this.isBot(newMember)) return;
+
+      const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
       const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
 
       try {
@@ -115,8 +117,11 @@ Hello! I'm Lumina, your intelligent group management assistant.
     try {
       const chatId = msg.chat.id;
       const leftMember = msg.left_chat_member;
-      const goodbyeMessage = this.generateGoodbyeMessage(leftMember.first_name);
 
+      // Prevent processing if the left member is a bot
+      if (this.isBot(leftMember)) return;
+
+      const goodbyeMessage = this.generateGoodbyeMessage(leftMember.first_name);
       const goodbyeImageUrl = 'https://i.ibb.co/kqWn2FY/goodbye.png';
 
       try {
