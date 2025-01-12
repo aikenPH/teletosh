@@ -44,11 +44,17 @@ class LuminaBot {
       throw new Error('Telegram Bot Token not provided. Please check your .env file.');
     }
 
+    // Initialize bot with proper options
     this.bot = new TelegramBot(config.BOT_TOKEN, {
-      webHook: {
-        port: PORT,
-        autoOpen: false
-      }
+      polling: true,
+      filepath: false
+    });
+
+    // Set bot information
+    this.bot.getMe().then(botInfo => {
+      this.bot.botInfo = botInfo;
+    }).catch(error => {
+      console.error('Error getting bot information:', error);
     });
 
     this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
@@ -156,3 +162,4 @@ const luminaBot = new LuminaBot();
 console.log('Lumina Bot is running...');
 
 module.exports = LuminaBot;
+
