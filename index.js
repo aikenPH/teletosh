@@ -16,6 +16,7 @@ const Database = require('./utils/database');
 const config = require('./config');
 
 const DEFAULT_PORT = 10000;
+const MAX_PORT_ATTEMPTS = 10;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 
 const botBanner = `
@@ -42,90 +43,117 @@ class LuminaBot {
       description: 'An intelligent and user-friendly Telegram bot'
     };
 
-    this.findAvailablePort()
-      .then(port => {
-        this.PORT = port;
-        this.initializeBotAndServer();
-      })
-      .catch(error => {
-        console.error('Port Allocation Error:', error);
-        process.exit(1);
-      });
+    this.initialize();
   }
 
-  findAvailablePort(startPort = DEFAULT_PORT) {
+  async initialize() {
+    try {
+      this.PORT = await this.findAvailablePort();
+      await this.initializeBotAndServer();
+    } catch (error) {
+      console.error('Initialization Error:', error);
+      process.exit(1);
+    }
+  }
+
+  async findAvailablePort(currentAttempt = 1) {
+    const tryPort = DEFAULT_PORT + currentAttempt - 1;
+
     return new Promise((resolve, reject) => {
       const server = net.createServer();
-      
-      server.listen(startPort, '0.0.0.0', () => {
+
+      server.once('error', async (err) => {
+        server.close();
+
+        if (err.code === 'EADDRINUSE') {
+          if (currentAttempt < MAX_PORT_ATTEMPTS) {
+            try {
+              const port = await this.findAvailablePort(currentAttempt + 1);
+              resolve(port);
+            } catch (error) {
+              reject(error);
+            }
+          } else {
+            reject(new Error(`Could not find an available port after ${MAX_PORT_ATTEMPTS} attempts`));
+          }
+        } else {
+          reject(err);
+        }
+      });
+
+      server.once('listening', () => {
         const port = server.address().port;
         server.close(() => {
           resolve(port);
         });
       });
 
-      server.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          // If port is in use, try next port
-          this.findAvailablePort(startPort + 1)
-            .then(resolve)
-            .catch(reject);
-        } else {
-          reject(err);
-        }
-      });
+      server.listen(tryPort, '0.0.0.0');
     });
   }
 
-  initializeBotAndServer() {
+  async initializeBotAndServer() {
     if (!config.BOT_TOKEN) {
       throw new Error('Telegram Bot Token not provided. Please check your .env file.');
     }
 
-    // Initialize Telegram Bot
-    this.bot = new TelegramBot(config.BOT_TOKEN, {
-      webHook: {
-        port: this.PORT
-      }
-    });
-
-    // Set webhook
-    this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
-
-    // Create Express app
+    // Initialize Express app first
     const app = express();
     app.use(express.json());
 
-    // Webhook route
-    app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
-      this.bot.processUpdate(req.body);
-      res.sendStatus(200);
+    // Create server instance
+    const server = app.listen(this.PORT, '0.0.0.0');
+
+    // Handle server errors
+    server.on('error', async (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${this.PORT} is in use, attempting to find new port...`);
+        server.close();
+        this.PORT = await this.findAvailablePort();
+        server.listen(this.PORT, '0.0.0.0');
+      } else {
+        console.error('Server Error:', error);
+        process.exit(1);
+      }
     });
 
-    // Health check route
-    app.get('/health', (req, res) => {
-      res.status(200).json({
-        status: 'healthy',
-        port: this.PORT,
-        timestamp: new Date().toISOString()
+    // Initialize Telegram Bot after server is successfully running
+    server.on('listening', () => {
+      console.log(`Server is running on port ${this.PORT}`);
+      
+      this.bot = new TelegramBot(config.BOT_TOKEN, {
+        webHook: {
+          port: this.PORT
+        }
+      });
+
+      // Set webhook
+      this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
+
+      // Webhook route
+      app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
+        this.bot.processUpdate(req.body);
+        res.sendStatus(200);
+      });
+
+      // Health check route
+      app.get('/health', (req, res) => {
+        res.status(200).json({
+          status: 'healthy',
+          port: this.PORT,
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      // Get bot info
+      this.bot.getMe().then(botInfo => {
+        this.bot.botInfo = botInfo;
+        console.log(`Bot initialized: @${botInfo.username}`);
+        this.initializeComponents();
+      }).catch(error => {
+        console.error('Error getting bot information:', error);
       });
     });
-
-    // Start server
-    app.listen(this.PORT, '0.0.0.0', () => {
-      console.log(`Server is running on port ${this.PORT}`);
-    });
-
-    // Get bot info
-    this.bot.getMe().then(botInfo => {
-      this.bot.botInfo = botInfo;
-      console.log(`Bot initialized: @${botInfo.username}`);
-    }).catch(error => {
-      console.error('Error getting bot information:', error);
-    });
-
-    // Initialize components
-    this.initializeComponents();
   }
 
   initializeComponents() {
@@ -211,10 +239,8 @@ class LuminaBot {
 // Global error handling
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  
-  // Additional logging for port-related errors
   if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${error.port} is already in use. Attempting to find an alternative port.`);
+    console.error(`Port ${error.port} is already in use. The application will attempt to find an alternative port.`);
   }
 });
 
