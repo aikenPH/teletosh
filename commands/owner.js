@@ -12,25 +12,18 @@ module.exports = {
         return bot.sendMessage(msg.chat.id, '❌ Owner information is not configured.');
       }
 
-      let ownerPhotos;
-      let ownerUser;
+      const profilePhotoUrl = 'https://i.ibb.co/cTcsnr3/IMG-20241217-090531.jpg';
 
+      let ownerUser;
       try {
         ownerUser = await bot.getChat(ownerId);
       } catch (userError) {
         console.error('Error fetching owner info:', userError);
         ownerUser = { 
           id: ownerId, 
-          first_name: 'Bot Owner', 
+          first_name: process.env.OWNER_NAME || 'Bot Owner', 
           username: process.env.OWNER_USERNAME || 'Not Available'
         };
-      }
-
-      try {
-        ownerPhotos = await bot.getUserProfilePhotos(ownerId);
-      } catch (photoError) {
-        console.error('Profile photo error:', photoError);
-        ownerPhotos = null;
       }
 
       const ownerDetails = `
@@ -47,28 +40,18 @@ module.exports = {
 
 📞 Contact Methods:
 • Telegram Direct Message
-• Username: ${ownerUser.username ? '@' + ownerUser.username : 'Not Available'}
+• Facebook: https://www.facebook.com/JohnDev19
+• GitHub: https://github.com/JohnDev19
 
 🌐 Chat Details:
 💬 Current Chat ID: <code>${msg.chat.id}</code>
 📊 Chat Type: ${msg.chat.type}
       `;
 
-      if (ownerPhotos && ownerPhotos.photos.length > 0) {
-        const photoFileId = ownerPhotos.photos[0][0].file_id;
-        
-        await bot.sendPhoto(msg.chat.id, photoFileId, {
-          caption: ownerDetails,
-          parse_mode: 'HTML'
-        });
-      } else {
-        await bot.sendMessage(msg.chat.id, '❌ No profile picture found for the owner.', {
-          parse_mode: 'HTML'
-        });
-        await bot.sendMessage(msg.chat.id, ownerDetails, {
-          parse_mode: 'HTML'
-        });
-      }
+      await bot.sendPhoto(msg.chat.id, profilePhotoUrl, {
+        caption: ownerDetails,
+        parse_mode: 'HTML'
+      });
 
     } catch (error) {
       console.error('Owner Command Error:', error);
