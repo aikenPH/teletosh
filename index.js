@@ -1,9 +1,9 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const Promise = require('bluebird');
+const express = require('express');
+const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
-const express = require('express');
 const CommandHandler = require('./handlers/commandHandler');
 const ModerationTools = require('./handlers/moderationTools');
 const EventReminder = require('./handlers/eventReminder');
@@ -14,7 +14,7 @@ const Database = require('./utils/database');
 const config = require('./config');
 
 const PORT = process.env.PORT || 3000;
-const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
+const URL = process.env.URL || 'https://lumina-wyp1.onrender.com';
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -26,10 +26,6 @@ Description: Intelligent Telegram Bot
 Author: JohnDev19
 Version: 1.1.0
 `;
-
-Promise.config({
-  cancellation: true
-});
 
 class LuminaBot {
   constructor() {
@@ -44,30 +40,23 @@ class LuminaBot {
       throw new Error('Telegram Bot Token not provided. Please check your .env file.');
     }
 
-    // Initialize bot with proper options
-    this.bot = new TelegramBot(config.BOT_TOKEN, {
-      polling: true,
-      filepath: false
-    });
-
-    // Set bot information
-    this.bot.getMe().then(botInfo => {
-      this.bot.botInfo = botInfo;
-    }).catch(error => {
-      console.error('Error getting bot information:', error);
-    });
-
+    // Initialize bot with webhook
+    this.bot = new TelegramBot(config.BOT_TOKEN);
     this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
 
-    const app = express();
-    app.use(express.json());
-    app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
+    // Set up Express server
+    this.app = express();
+    this.app.use(bodyParser.json());
+
+    // Webhook endpoint
+    this.app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
       this.bot.processUpdate(req.body);
       res.sendStatus(200);
     });
 
-    app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    // Health check endpoint
+    this.app.get('/health', (req, res) => {
+      res.status(200).json({ status: 'OK', message: 'Lumina Bot is running' });
     });
 
     this.db = new Database();
@@ -83,6 +72,12 @@ class LuminaBot {
     this.setupErrorHandling();
 
     this.eventReminder.startEventChecking();
+
+    // Start the server
+    this.app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+      console.log(`Webhook URL: ${URL}/bot${config.BOT_TOKEN}`);
+    });
   }
 
   setupEventListeners() {
@@ -97,12 +92,7 @@ class LuminaBot {
         if (text && text.startsWith('/setreminder')) {
           const reminderModule = require('./commands/setreminder');
           const args = text.split(' ').slice(1);
-          await reminderModule.execute(
-            this.bot, 
-            msg, 
-            args, 
-            this.db
-          );
+          await reminderModule.execute(this.bot, msg, args, this.db);
         } else if (text && text.startsWith('/')) {
           await this.commandHandler.handleCommand(msg);
         } else {
@@ -146,16 +136,20 @@ class LuminaBot {
     this.bot.on('error', (error) => {
       console.error('Bot Error:', error);
     });
+
+    this.bot.on('webhook_error', (error) => {
+      console.error('Webhook Error:', error);
+    });
+
+    process.on('uncaughtException', (error) => {
+      console.error('Uncaught Exception:', error);
+    });
+
+    process.on('unhandledRejection', (error) => {
+      console.error('Unhandled Rejection:', error);
+    });
   }
 }
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (error) => {
-  console.error('Unhandled Rejection:', error);
-});
 
 console.log(botBanner);
 const luminaBot = new LuminaBot();
