@@ -25,7 +25,7 @@ module.exports = {
 📍 Group ID: <code>${targetGroupId}</code>
 🌐 Invite Link: ${inviteLink}
 
-<i>Link is valid for 7 days or until revoked</i>
+<i>Direct invite link retrieved</i>
         `, {
           parse_mode: 'HTML',
           disable_web_page_preview: true
@@ -40,8 +40,6 @@ module.exports = {
         
         if (linkError.message.includes('bot is not a member')) {
           errorMessage = '❌ I am not a member of the specified group.';
-        } else if (linkError.message.includes('not enough rights')) {
-          errorMessage = '❌ I do not have admin rights to generate an invite link in that group.';
         }
 
         await bot.sendMessage(msg.chat.id, errorMessage);
@@ -56,19 +54,30 @@ module.exports = {
 
 async function generateGroupInviteLink(bot, chatId) {
   try {
-    const existingLink = await bot.exportChatInviteLink(chatId);
-    if (existingLink) return existingLink;
-
-    const newLink = await bot.createChatInviteLink(chatId, {
-      expire_date: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-      member_limit: 0
-    });
-
-    return newLink.invite_link;
-  } catch (error) {
-    if (chatId.toString().startsWith('-100')) {
-      return `https://t.me/+${chatId.toString().replace('-100', '')}`;
+    const chat = await bot.getChat(chatId);
+    
+    if (chat.invite_link) {
+      return chat.invite_link;
     }
-    throw error;
+
+    try {
+      const inviteLink = await bot.exportChatInviteLink(chatId);
+      return inviteLink;
+    } catch (exportError) {
+      try {
+        const newInviteLink = await bot.createChatInviteLink(chatId, {
+          expire_date: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+          member_limit: 0
+        });
+        return newInviteLink.invite_link;
+      } catch (createLinkError) {
+        if (chatId.toString().startsWith('-100')) {
+          return `https://t.me/+${chatId.toString().replace('-100', '')}`;
+        }
+        throw createLinkError;
+      }
+    }
+  } catch (error) {
+    throw new Error('Unable to retrieve group invite link');
   }
 }
