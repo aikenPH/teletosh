@@ -12,22 +12,18 @@ module.exports = {
         return bot.sendMessage(msg.chat.id, '❌ Owner information is not configured.');
       }
 
-      let ownerUser;
       let ownerPhotos;
+      let ownerUser;
 
       try {
-        const chatMembers = await bot.getChatAdministrators(msg.chat.id);
-        const foundMember = chatMembers.find(member => 
-          member.user.id === ownerId
-        );
-
-        ownerUser = foundMember 
-          ? foundMember.user 
-          : { id: ownerId, first_name: 'Bot Owner' };
-
-      } catch (memberError) {
-        console.error('Member search error:', memberError);
-        ownerUser = { id: ownerId, first_name: 'Bot Owner' };
+        ownerUser = await bot.getChat(ownerId);
+      } catch (userError) {
+        console.error('Error fetching owner info:', userError);
+        ownerUser = { 
+          id: ownerId, 
+          first_name: 'Bot Owner', 
+          username: process.env.OWNER_USERNAME || 'Not Available'
+        };
       }
 
       try {
@@ -59,11 +55,16 @@ module.exports = {
       `;
 
       if (ownerPhotos && ownerPhotos.photos.length > 0) {
-        await bot.sendPhoto(msg.chat.id, ownerPhotos.photos[0][0].file_id, {
+        const photoFileId = ownerPhotos.photos[0][0].file_id;
+        
+        await bot.sendPhoto(msg.chat.id, photoFileId, {
           caption: ownerDetails,
           parse_mode: 'HTML'
         });
       } else {
+        await bot.sendMessage(msg.chat.id, '❌ No profile picture found for the owner.', {
+          parse_mode: 'HTML'
+        });
         await bot.sendMessage(msg.chat.id, ownerDetails, {
           parse_mode: 'HTML'
         });
