@@ -11,6 +11,80 @@ class GroupManager {
     try {
       const chatId = msg.chat.id;
       const newMember = msg.new_chat_member;
+
+      // Check if the new member is the bot itself
+      if (newMember.is_bot && newMember.username === process.env.BOT_USERNAME) {
+        await this.handleBotAdded(msg);
+      } else {
+        await this.handleUserJoined(msg);
+      }
+    } catch (error) {
+      console.error('Error in handleNewMember:', error);
+    }
+  }
+
+  async handleBotAdded(msg) {
+    const chatId = msg.chat.id;
+    const introImage = 'https://i.ibb.co/3YN5ggW/lumina.jpg';
+
+    try {
+      const introMessage = `
+🤖 *Lumina Bot Introduction* 🌟
+
+Hello! I'm Lumina, your intelligent group management assistant. 
+
+✨ *Features:*
+• Advanced moderation tools
+• Fun interactive commands
+• Customizable group settings
+• User engagement tracking
+
+🛡️ *Moderation Capabilities:*
+• User restriction
+• Spam prevention
+• Welcome messages
+• Group analytics
+
+👥 *How to get started:*
+• Add me as an admin
+• Use /help to see available commands
+• Customize settings with /settings
+
+💡 *Tip:* I work best with admin permissions!
+
+*Developed with ❤️ by Your Team*
+      `;
+
+      // Send introduction photo
+      await this.bot.sendPhoto(chatId, introImage, {
+        caption: introMessage,
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '📖 View Commands', callback_data: 'show_commands' },
+              { text: '⚙️ Setup Guide', callback_data: 'setup_guide' }
+            ]
+          ]
+        }
+      });
+
+      // Add chat to database
+      this.db.addChat(chatId, {
+        title: msg.chat.title || 'Unknown Group',
+        type: msg.chat.type,
+        addedTimestamp: Date.now()
+      });
+
+    } catch (error) {
+      console.error('Bot introduction message error:', error);
+    }
+  }
+
+  async handleUserJoined(msg) {
+    try {
+      const chatId = msg.chat.id;
+      const newMember = msg.new_chat_member;
       const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
 
       const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
@@ -24,8 +98,16 @@ class GroupManager {
         console.error('Error sending welcome photo:', photoError);
         await this.bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'HTML' });
       }
+
+      // Update user in database
+      this.db.updateUser(newMember.id, {
+        username: newMember.username,
+        firstName: newMember.first_name,
+        joinedGroups: (this.db.getUser(newMember.id).joinedGroups || 0) + 1
+      });
+
     } catch (error) {
-      console.error('Error in handleNewMember:', error);
+      console.error('Error in handleUserJoined:', error);
     }
   }
 
@@ -150,7 +232,7 @@ Wishing you all the best! 🌟
     }
   }
 
-  async editTopic(chatId, messageThreadId, name, iconCustomEmojiId) {
+    async editTopic(chatId, messageThreadId, name, iconCustomEmojiId) {
     try {
       const result = await this.bot.editForumTopic(chatId, messageThreadId, name, iconCustomEmojiId);
       return result;
@@ -228,7 +310,78 @@ Wishing you all the best! 🌟
       throw error;
     }
   }
+
+  async getGroupInfo(chatId) {
+    try {
+      const chatInfo = await this.bot.getChat(chatId);
+      return {
+        id: chatInfo.id,
+        title: chatInfo.title,
+        type: chatInfo.type,
+        description: chatInfo.description,
+        memberCount: await this.bot.getChatMembersCount(chatId)
+      };
+    } catch (error) {
+      console.error('Error getting group info:', error);
+      throw error;
+    }
+  }
+
+  async listAdministrators(chatId) {
+    try {
+      const admins = await this.bot.getChatAdministrators(chatId);
+      return admins.map(admin => ({
+        user: {
+          id: admin.user.id,
+          firstName: admin.user.first_name,
+          lastName: admin.user.last_name,
+          username: admin.user.username
+        },
+        status: admin.status
+      }));
+    } catch (error) {
+      console.error('Error listing administrators:', error);
+      throw error;
+    }
+  }
+
+  async setGroupDescription(chatId, description) {
+    try {
+      const permissions = await this.checkBotPermissions(chatId);
+      if (!permissions.canChangeInfo) {
+        throw new Error('Bot does not have permission to change group info');
+      }
+      const result = await this.bot.setChatDescription(chatId, description);
+      return result;
+    } catch (error) {
+      console.error('Error setting group description:', error);
+      throw error;
+    }
+  }
+
+  async exportInviteLink(chatId) {
+    try {
+      const permissions = await this.checkBotPermissions(chatId);
+      if (!permissions.canInviteUsers) {
+        throw new Error('Bot does not have permission to export invite link');
+      }
+      const inviteLink = await this.bot.exportChatInviteLink(chatId);
+      return inviteLink;
+    } catch (error) {
+      console.error('Error exporting invite link:', error);
+      throw error;
+    }
+  }
+
+  async getGroupMemberCount(chatId) {
+    try {
+      const memberCount = await this.bot.getChatMembersCount(chatId);
+      return memberCount;
+    } catch (error) {
+      console.error('Error getting member count:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = GroupManager;
-
