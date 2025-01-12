@@ -1,72 +1,62 @@
 module.exports = {
   name: 'leave',
-  description: 'Force bot to leave a group and optionally clear messages (Owner only)',
+  description: 'Force bot to leave a group (Owner only)',
   
   async execute(bot, msg, args, db) {
-    const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
-
-    if (!botOwnerId || msg.from.id !== botOwnerId) {
-      return bot.sendMessage(msg.chat.id, '❌ This command is restricted to the bot creator only.');
-    }
-
-    if (msg.chat.type === 'private') {
-      return bot.sendMessage(msg.chat.id, '❌ This command can only be used in group chats.');
-    }
-
-    const chatId = msg.chat.id;
-    const clearMessages = args[0]?.toLowerCase() === 'clear';
-
     try {
-      let deletedMessagesCount = 0;
-
-      if (clearMessages) {
-        try {
-          const chatHistory = await bot.getUpdates({
-            offset: -1,
-            limit: 100,
-            timeout: 0
-          });
-
-          const relevantMessages = chatHistory.filter(
-            update => update.message?.chat?.id === chatId
-          );
-
-          for (const update of relevantMessages) {
-            try {
-              await bot.deleteMessage(chatId, update.message.message_id);
-              deletedMessagesCount++;
-            } catch (deleteError) {
-              console.error(`Failed to delete message ${update.message.message_id}:`, deleteError);
-            }
-          }
-        } catch (historyError) {
-          console.error('Error retrieving chat history:', historyError);
-        }
+      const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
+      if (!botOwnerId || msg.from.id !== botOwnerId) {
+        await bot.sendMessage(msg.chat.id, '❌ I only accept this command from my creator.');
+        return;
       }
 
-      const leaveMessage = await bot.sendMessage(chatId, `
-🚪 *Leaving Group* 🚪
+      if (msg.chat.type === 'private') {
+        await bot.sendMessage(msg.chat.id, '❌ I can only use this command in group chats.');
+        return;
+      }
 
-${clearMessages ? `🗑️ Cleared ${deletedMessagesCount} messages` : ''}
-Bot has been instructed to leave this group by the owner.
-Goodbye! 👋
-      `, { parse_mode: 'Markdown' });
+      const chatId = msg.chat.id;
+      const chatName = msg.chat.title || 'this group';
 
-      setTimeout(async () => {
-        try {
-          await bot.leaveChat(chatId);
-          
-          if (db && typeof db.removeChat === 'function') {
-            await db.removeChat(chatId);
-          }
-        } catch (leaveError) {
-          console.error('Error leaving chat:', leaveError);
+      const leaveMessage = await bot.sendMessage(
+        chatId,
+        `👋 I've been instructed to leave ${chatName}. It was nice spending time with everyone! Goodbye! ✨`,
+        { parse_mode: 'Markdown' }
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      try {
+        await bot.leaveChat(chatId);
+        
+        if (db && typeof db.removeChat === 'function') {
+          await db.removeChat(chatId);
         }
-      }, 2000);
 
+        if (botOwnerId) {
+          await bot.sendMessage(
+            botOwnerId,
+            `✅ I've successfully left *${chatName}*`,
+            { parse_mode: 'Markdown' }
+          );
+        }
+      } catch (error) {
+        console.error('Error during leave process:', error);
+        
+        if (botOwnerId) {
+          await bot.sendMessage(
+            botOwnerId,
+            `❌ I encountered an error while trying to leave *${chatName}*:\n\`${error.message}\``,
+            { parse_mode: 'Markdown' }
+          );
+        }
+      }
     } catch (error) {
       console.error('Leave Command Error:', error);
-      await bot.sendMessage(chatId, '❌ An unexpected error occurred while processing the leave command.');
+      await bot.sendMessage(
+        msg.chat.id,
+        '❌ I encountered an unexpected error while trying to leave.'
+      );
     }
   }
 };
