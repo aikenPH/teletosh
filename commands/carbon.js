@@ -37,30 +37,69 @@ module.exports = {
         return bot.sendMessage(msg.chat.id, '❌ Please provide valid code to generate screenshot.', { parse_mode: 'HTML' });
       }
 
-      const formData = new FormData();
-      formData.append('code', code);
-      formData.append('theme', theme);
-      formData.append('background', 'rgba(171, 184, 195, 1)');
-      formData.append('language', 'auto');
-      formData.append('padding', '56');
-      formData.append('exportSize', '4x');
+      // Limit code length to prevent API errors
+      if (code.length > 1000) {
+        return bot.sendMessage(msg.chat.id, '❌ Code is too long. Maximum 1000 characters allowed.', { parse_mode: 'HTML' });
+      }
 
-      const response = await axios.post('https://carbonara.solopov.dev/api/cook', formData, {
-        headers: {
-          ...formData.getHeaders(),
-        },
-        responseType: 'arraybuffer'
-      });
+      // Multiple API endpoints for redundancy
+      const carbonAPIs = [
+        'https://carbonara.solopov.dev/api/cook',
+        'https://carbon-api.vercel.app/api/carbon',
+        'https://carbon-api.herokuapp.com/generate'
+      ];
 
-      await bot.sendPhoto(msg.chat.id, response.data, {
-        caption: `🖼️ Carbon Screenshot (${theme} theme)`,
+      let imageData = null;
+      let usedAPI = null;
+
+      for (const apiUrl of carbonAPIs) {
+        try {
+          const formData = new FormData();
+          formData.append('code', code);
+          formData.append('theme', theme);
+          formData.append('background', 'rgba(171, 184, 195, 1)');
+          formData.append('language', 'auto');
+
+          const response = await axios.post(apiUrl, formData, {
+            headers: {
+              ...formData.getHeaders(),
+            },
+            responseType: 'arraybuffer',
+            timeout: 10000 // 10 seconds timeout
+          });
+
+          if (response.data && response.data.byteLength > 0) {
+            imageData = response.data;
+            usedAPI = apiUrl;
+            break;
+          }
+        } catch (apiError) {
+          console.error(`Error with API ${apiUrl}:`, apiError.message);
+          continue;
+        }
+      }
+
+      if (!imageData) {
+        return bot.sendMessage(msg.chat.id, `
+❌ <b>Carbon Screenshot Generation Failed</b>
+
+• Unable to generate screenshot
+• Please check your code syntax
+• Try a shorter code snippet
+• APIs might be temporarily unavailable
+        `, { parse_mode: 'HTML' });
+      }
+
+      // Send the generated image
+      await bot.sendPhoto(msg.chat.id, imageData, {
+        caption: `🖼️ Carbon Screenshot (${theme} theme)\nGenerated via: ${usedAPI}`,
         parse_mode: 'HTML'
       });
 
     } catch (error) {
       console.error('Carbon Generation Error:', error);
       
-      let errorMessage = '❌ Failed to generate code screenshot.';
+      let errorMessage = '❌ Unexpected error generating code screenshot.';
       
       if (error.response) {
         errorMessage += `\n\n<b>Error Details:</b>
