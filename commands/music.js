@@ -34,6 +34,14 @@ module.exports = {
       const fileName = `music_${msg.from.id}_${Date.now()}.mp3`;
       const filePath = path.join(tempDir, fileName);
 
+      const userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      ];
+
+      const selectedUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
+
       await ytdl(musicUrl, {
         output: filePath,
         extractAudio: true,
@@ -41,9 +49,17 @@ module.exports = {
         noOverwrites: true,
         noWarnings: true,
         noCheckCertificate: true,
+        userAgent: selectedUserAgent,
         addHeader: [
-          'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        ]
+          `User-Agent: ${selectedUserAgent}`,
+          'Accept-Language: en-US,en;q=0.9',
+          'Referer: https://www.youtube.com/',
+          'DNT: 1'
+        ],
+        bypassAge: true,
+        geo: 'US',
+        referer: 'https://www.youtube.com/',
+        cookies: path.join(__dirname, 'youtube_cookies.txt')
       });
 
       const fileStats = await fs.stat(filePath);
@@ -77,5 +93,22 @@ module.exports = {
         reply_to_message_id: msg.message_id
       });
     }
+  },
+
+  async createYoutubeCookiesFile() {
+    const cookiesContent = `
+# Netscape HTTP Cookie File
+# Created by youtube-dl to bypass bot detection
+# DO NOT EDIT
+
+.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	YES+cb.20210328-17-p0.en+FX
+    `;
+
+    const cookiesPath = path.join(__dirname, 'youtube_cookies.txt');
+    await fs.writeFile(cookiesPath, cookiesContent);
+    console.log('YouTube cookies file created successfully');
   }
 };
+
+// Automatically create cookies file on module load
+module.exports.createYoutubeCookiesFile();
