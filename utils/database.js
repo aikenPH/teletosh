@@ -110,6 +110,23 @@ class Database {
   getAllChats() {
     return this.data.chats ? Object.values(this.data.chats) : [];
   }
+  
+  getAllGroups() {
+    return this.data.groups;
+  }
+
+  addGroup(groupId, groupTitle) {
+    const existingGroup = this.data.groups.find(group => group.id === groupId);
+    if (!existingGroup) {
+      this.data.groups.push({ id: groupId, title: groupTitle });
+      this.saveData();
+    }
+  }
+
+  removeGroup(groupId) {
+    this.data.groups = this.data.groups.filter(group => group.id !== groupId);
+    this.saveData();
+  }
 }
 
 module.exports = Database;
