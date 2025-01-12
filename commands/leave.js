@@ -48,7 +48,6 @@ module.exports = {
 🚪 *Leaving Group* 🚪
 
 ${clearMessages ? `🗑️ Cleared ${deletedMessagesCount} messages` : ''}
-
 Bot has been instructed to leave this group by the owner.
 Goodbye! 👋
       `, { parse_mode: 'Markdown' });
