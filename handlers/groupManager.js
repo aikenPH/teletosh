@@ -13,10 +13,8 @@ class GroupManager {
     const newMember = msg.new_chat_member;
 
     if (newMember.id === this.bot.botInfo.id) {
-      // Bot was added to a new group
       await this.sendBotIntroduction(chatId);
       
-      // Notify owner with group details
       const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
       
       if (botOwnerId) {
@@ -27,7 +25,6 @@ class GroupManager {
 • Name: ${msg.chat.title || 'Unnamed Group'}
 • Type: ${msg.chat.type}
 • Chat ID: <code>${chatId}</code>
-• Members: ${msg.chat.members_count || 'Unknown'}
 
 👤 Added by: @${msg.from.username || 'Unknown User'}
 • User ID: <code>${msg.from.id}</code>
@@ -44,7 +41,6 @@ class GroupManager {
       return;
     }
 
-    // Existing welcome logic for new members
     const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
     const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
     
