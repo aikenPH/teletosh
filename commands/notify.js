@@ -18,37 +18,48 @@ module.exports = {
     }
 
     try {
-      // Retrieve all chats from the database
-      const allChats = await db.getAllChats();
+      // Get all chats the bot is currently in
+      const chatList = await bot.getUpdates({
+        offset: -1,
+        limit: 100,
+        timeout: 0
+      });
 
-      let successCount = 0;
-      let failureCount = 0;
+      const uniqueChats = new Set();
+      const successChats = [];
       const failedChats = [];
 
-      // Send notification to each chat
-      for (const chat of allChats) {
-        try {
-          await bot.sendMessage(chat.chat_id, `📢 *GLOBAL NOTIFICATION* 📢\n\n${notificationText}`, {
-            parse_mode: 'Markdown'
-          });
-          successCount++;
-        } catch (sendError) {
-          console.error(`Failed to send notification to chat ${chat.chat_id}:`, sendError);
-          failureCount++;
-          failedChats.push(chat.chat_id);
+      // Process unique chats
+      for (const update of chatList) {
+        const chatId = update.message?.chat?.id || 
+                       update.edited_message?.chat?.id || 
+                       update.channel_post?.chat?.id;
+        
+        if (chatId && !uniqueChats.has(chatId)) {
+          uniqueChats.add(chatId);
+
+          try {
+            await bot.sendMessage(chatId, `📢 *GLOBAL NOTIFICATION* 📢\n\n${notificationText}`, {
+              parse_mode: 'Markdown'
+            });
+            successChats.push(chatId);
+          } catch (sendError) {
+            console.error(`Failed to send notification to chat ${chatId}:`, sendError);
+            failedChats.push(chatId);
+          }
         }
       }
 
       // Send summary to the owner
       await bot.sendMessage(msg.chat.id, `
-✅ Notification Sent Successfully!
+✅ Notification Broadcast Complete!
 
 📊 Delivery Report:
-• Total Chats: ${allChats.length}
-• Successful Deliveries: ${successCount}
-• Failed Deliveries: ${failureCount}
+• Total Unique Chats: ${uniqueChats.size}
+• Successful Deliveries: ${successChats.length}
+• Failed Deliveries: ${failedChats.length}
 
-${failureCount > 0 ? `Failed Chat IDs:\n${failedChats.join(', ')}` : ''}
+${failedChats.length > 0 ? `Failed Chat IDs:\n${failedChats.join(', ')}` : ''}
       `);
 
     } catch (error) {
