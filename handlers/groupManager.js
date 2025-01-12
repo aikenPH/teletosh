@@ -12,11 +12,13 @@ class GroupManager {
       const chatId = msg.chat.id;
       const newMember = msg.new_chat_member;
 
+      // Check if the new member is the bot itself
       if (newMember.id === this.bot.botInfo.id) {
         await this.sendBotIntroduction(chatId);
         return;
       }
 
+      // Regular welcome message for other users
       const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
       const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
       
@@ -57,18 +59,15 @@ Need help? Just type /help to get started!
         parse_mode: 'HTML'
       });
 
-      const sentMessage = await this.bot.sendMessage(chatId, '📌 <b>Tip:</b> Pin this message for quick access to bot information!', {
+      await this.bot.sendMessage(chatId, '📌 <b>Tip:</b> Consider pinning the above message for quick access to bot information!', {
         parse_mode: 'HTML'
       });
-      
-      try {
-        await this.bot.pinChatMessage(chatId, sentMessage.message_id);
-      } catch (pinError) {
-        console.error('Error pinning introduction message:', pinError);
-      }
     } catch (error) {
       console.error('Error sending bot introduction:', error);
       await this.bot.sendMessage(chatId, introMessage, { parse_mode: 'HTML' });
+      await this.bot.sendMessage(chatId, '📌 <b>Tip:</b> Consider pinning the above message for quick access to bot information!', {
+        parse_mode: 'HTML'
+      });
     }
   }
 
