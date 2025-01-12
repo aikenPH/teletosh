@@ -1,65 +1,120 @@
+const os = require('os');
+const { promisify } = require('util');
+
 module.exports = {
   name: 'clearcache',
   description: 'Clear bot cache and storage usage',
   
   async execute(bot, msg, args, db) {
-    const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
-
-    if (!botOwnerId || msg.from.id !== botOwnerId) {
-      return bot.sendMessage(msg.chat.id, '❌ This command is restricted to the bot creator only.');
-    }
-
     try {
-      const initialStats = process.memoryUsage();
+      const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
+      if (!botOwnerId || msg.from.id !== botOwnerId) {
+        await bot.sendMessage(msg.chat.id, '❌ This command is restricted to the bot creator only.');
+        return;
+      }
 
-      const clearOperations = [
-        () => {
-          if (db && typeof db.clearCache === 'function') {
-            db.clearCache();
-          }
-        },
-        () => {
-          global.gc && global.gc();
-        },
-        () => {
-          Object.keys(require.cache).forEach(key => {
-            if (!key.includes('node_modules')) {
-              delete require.cache[key];
-            }
-          });
+      const statusMessage = await bot.sendMessage(msg.chat.id, '🔄 Initiating cache cleanup...');
+
+      const initialStats = {
+        memory: process.memoryUsage(),
+        systemFreeMem: os.freemem(),
+        uptime: process.uptime()
+      };
+
+      let cleanupStatus = {
+        dbCacheCleared: false,
+        gcTriggered: false,
+        modulesCleaned: 0
+      };
+
+      try {
+        if (db && typeof db.clearCache === 'function') {
+          await db.clearCache();
+          cleanupStatus.dbCacheCleared = true;
         }
-      ];
+      } catch (dbError) {
+        console.error('Database cache cleanup error:', dbError);
+      }
 
-      clearOperations.forEach(operation => operation());
+      try {
+        if (global.gc) {
+          await new Promise(resolve => {
+            global.gc();
+            setTimeout(resolve, 100);
+          });
+          cleanupStatus.gcTriggered = true;
+        }
+      } catch (gcError) {
+        console.error('Garbage collection error:', gcError);
+      }
 
-      const finalStats = process.memoryUsage();
+      try {
+        const moduleKeys = Object.keys(require.cache);
+        moduleKeys.forEach(key => {
+          if (!key.includes('node_modules') && !key.includes('clearcache.js')) {
+            delete require.cache[key];
+            cleanupStatus.modulesCleaned++;
+          }
+        });
+      } catch (moduleError) {
+        console.error('Module cache cleanup error:', moduleError);
+      }
+
+       await new Promise(resolve => setTimeout(resolve, 500));
+      const finalStats = {
+        memory: process.memoryUsage(),
+        systemFreeMem: os.freemem()
+      };
+
+      const memoryDiff = {
+        heapUsed: initialStats.memory.heapUsed - finalStats.memory.heapUsed,
+        heapTotal: initialStats.memory.heapTotal - finalStats.memory.heapTotal,
+        external: initialStats.memory.external - finalStats.memory.external,
+        systemMem: finalStats.systemFreeMem - initialStats.systemFreeMem
+      };
+
+      const formatMemory = (bytes) => {
+        return (bytes / 1024 / 1024).toFixed(2);
+      };
 
       const cacheCleanupReport = `
 🧹 <b>Cache Cleanup Report</b>
 
-📊 Memory Usage Before Cleanup:
-• Heap Used: ${(initialStats.heapUsed / 1024 / 1024).toFixed(2)} MB
-• Heap Total: ${(initialStats.heapTotal / 1024 / 1024).toFixed(2)} MB
+📊 <b>Initial Memory State:</b>
+• Heap Used: ${formatMemory(initialStats.memory.heapUsed)} MB
+• Heap Total: ${formatMemory(initialStats.memory.heapTotal)} MB
+• External: ${formatMemory(initialStats.memory.external)} MB
 
-📉 Memory Usage After Cleanup:
-• Heap Used: ${(finalStats.heapUsed / 1024 / 1024).toFixed(2)} MB
-• Heap Total: ${(finalStats.heapTotal / 1024 / 1024).toFixed(2)} MB
+📉 <b>Final Memory State:</b>
+• Heap Used: ${formatMemory(finalStats.memory.heapUsed)} MB
+• Heap Total: ${formatMemory(finalStats.memory.heapTotal)} MB
+• External: ${formatMemory(finalStats.memory.external)} MB
 
-🔍 Cleanup Operations:
-• Database Cache Cleared
-• Memory Garbage Collection Triggered
-• Module Cache Refreshed
+🔄 <b>Cleanup Operations:</b>
+• Database Cache: ${cleanupStatus.dbCacheCleared ? '✅' : '❌'}
+• Garbage Collection: ${cleanupStatus.gcTriggered ? '✅' : '❌'}
+• Modules Refreshed: ${cleanupStatus.modulesCleaned} files
 
-💾 Estimated Memory Freed: ${((initialStats.heapUsed - finalStats.heapUsed) / 1024 / 1024).toFixed(2)} MB
+💾 <b>Memory Changes:</b>
+• Heap Usage: ${formatMemory(memoryDiff.heapUsed)} MB
+• Total Heap: ${formatMemory(memoryDiff.heapTotal)} MB
+• External Memory: ${formatMemory(memoryDiff.external)} MB
+• System Memory: ${formatMemory(memoryDiff.systemMem)} MB
+
+⏰ <b>System Info:</b>
+• Uptime: ${Math.floor(initialStats.uptime / 3600)} hours ${Math.floor((initialStats.uptime % 3600) / 60)} minutes
+• Platform: ${os.platform()} ${os.release()}
       `;
 
-      await bot.sendMessage(msg.chat.id, cacheCleanupReport, {
+      await bot.editMessageText(cacheCleanupReport, {
+        chat_id: msg.chat.id,
+        message_id: statusMessage.message_id,
         parse_mode: 'HTML'
       });
 
     } catch (error) {
       console.error('Cache Cleanup Error:', error);
-      await bot.sendMessage(msg.chat.id, '❌ An error occurred during cache cleanup.');
+      await bot.sendMessage(msg.chat.id, `❌ Cache cleanup error: ${error.message}`);
     }
   }
 };
