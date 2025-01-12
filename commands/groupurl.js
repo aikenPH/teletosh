@@ -47,15 +47,12 @@ module.exports = {
 
 async function generateGroupInviteLink(bot, chatId) {
   try {
-    // Ensure bot is a member of the group
     const botMember = await bot.getChatMember(chatId, bot.botInfo.id);
     
-    // Check if bot has rights to generate invite link
     if (botMember.status !== 'administrator' && botMember.status !== 'creator') {
       throw new Error('Bot must be an admin to generate invite link');
     }
 
-    // Primary method: Create a new invite link
     try {
       const newInviteLink = await bot.createChatInviteLink(chatId, {
         expire_date: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
@@ -67,7 +64,6 @@ async function generateGroupInviteLink(bot, chatId) {
       }
     } catch (createLinkError) {}
 
-    // Secondary method: Export existing invite link
     try {
       const existingLink = await bot.exportChatInviteLink(chatId);
       if (existingLink) {
@@ -75,7 +71,6 @@ async function generateGroupInviteLink(bot, chatId) {
       }
     } catch (exportError) {}
 
-    // Tertiary method: Get chat info for username
     try {
       const chat = await bot.getChat(chatId);
       if (chat.username) {
@@ -83,7 +78,6 @@ async function generateGroupInviteLink(bot, chatId) {
       }
     } catch (chatError) {}
 
-    // If all methods fail, construct a manual invite link
     const numericId = chatId.toString().replace('-100', '');
     const manualLink = `https://t.me/+${numericId}`;
 
