@@ -1,65 +1,116 @@
+const axios = require('axios');
 const ytdl = require('ytdl-core');
-const ytpl = require('ytpl');
+const fs = require('fs-extra');
+const path = require('path');
+const ffmpeg = require('fluent-ffmpeg');
 
 module.exports = {
-  name: 'musicinfo',
-  description: 'Get music information from YouTube',
+  name: 'music',
+  description: 'Download and send music from YouTube',
   
   async execute(bot, msg, args) {
     if (args.length === 0) {
-      return bot.sendMessage(msg.chat.id, 'Please provide a YouTube URL or search term.');
+      return bot.sendMessage(msg.chat.id, 'Please provide a music search term.');
     }
 
-    const input = args.join(' ');
+    const query = args.join(' ');
+    const YOUTUBE_API_KEY = 'AIzaSyBuIbW42nk2hPliq7Uci1qsCwHQ0A5-3tU';
 
     try {
-      let songInfo;
+      // Send initial searching message
+      const searchingMessage = await bot.sendMessage(msg.chat.id, `🔍 Searching for "${query}"...`);
 
-      // Check if input is a valid YouTube URL
-      if (ytdl.validateURL(input)) {
-        songInfo = await ytdl.getInfo(input);
-        const title = songInfo.videoDetails.title;
-        const artist = songInfo.videoDetails.author.name;
-        const duration = this.formatDuration(songInfo.videoDetails.lengthSeconds);
-        const views = this.formatViews(songInfo.videoDetails.viewCount);
-
-        const message = `🎵 Music Information:\n\n` +
-                        `📌 Title: ${title}\n` +
-                        `👤 Artist: ${artist}\n` +
-                        `⏱️ Duration: ${duration}\n` +
-                        `👀 Views: ${views}`;
-
-        await bot.sendMessage(msg.chat.id, message, {
-          reply_to_message_id: msg.message_id
-        });
-      } else {
-        // If not a URL, search for the first result
-        const searchResults = await ytpl.search(input, { limit: 1 });
-        
-        if (searchResults.length === 0) {
-          return bot.sendMessage(msg.chat.id, 'No music found.');
+      // YouTube Search API Request
+      const searchResponse = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+        params: {
+          part: 'snippet',
+          q: query,
+          type: 'video',
+          key: YOUTUBE_API_KEY,
+          maxResults: 1,
+          videoEmbeddable: true,
+          videoSyndicated: true
         }
+      });
 
-        const song = searchResults[0];
-        const message = `🎵 Music Information:\n\n` +
-                        `📌 Title: ${song.title}\n` +
-                        `👤 Artist: ${song.author.name}\n` +
-                        `⏱️ Duration: ${song.duration || 'N/A'}\n` +
-                        `👀 Views: ${this.formatViews(song.views)}`;
-
-        await bot.sendMessage(msg.chat.id, message, {
-          reply_to_message_id: msg.message_id
-        });
+      // Check search results
+      if (!searchResponse.data.items || searchResponse.data.items.length === 0) {
+        await bot.deleteMessage(msg.chat.id, searchingMessage.message_id);
+        return bot.sendMessage(msg.chat.id, 'No music found matching your search.');
       }
 
+      // Get first video details
+      const video = searchResponse.data.items[0];
+      const videoId = video.id.videoId;
+      const videoTitle = video.snippet.title.replace(/[^a-zA-Z0-9 ]/g, '');
+
+      // Delete searching message
+      await bot.deleteMessage(msg.chat.id, searchingMessage.message_id);
+
+      // Send processing message
+      const processingMessage = await bot.sendMessage(msg.chat.id, '⏳ Processing music download...');
+
+      // Prepare temporary directory
+      const tempDir = path.join(__dirname, 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir);
+      }
+
+      // Prepare file paths
+      const fileName = `${videoTitle}_${Date.now()}.mp3`;
+      const filePath = path.join(tempDir, fileName);
+
+      // Download and convert
+      await new Promise((resolve, reject) => {
+        const stream = ytdl(`https://www.youtube.com/watch?v=${videoId}`, { 
+          quality: 'highestaudio' 
+        });
+
+        ffmpeg(stream)
+          .audioBitrate(128)
+          .toFormat('mp3')
+          .save(filePath)
+          .on('end', () => {
+            console.log('Audio download complete');
+            resolve();
+          })
+          .on('error', (err) => {
+            console.error('Conversion error:', err);
+            reject(err);
+          });
+      });
+
+      // Check file size
+      const fileStats = await fs.stat(filePath);
+      if (fileStats.size > 52428800) { // 50 MB limit
+        await fs.unlink(filePath);
+        await bot.deleteMessage(msg.chat.id, processingMessage.message_id);
+        return bot.sendMessage(msg.chat.id, 'The file is too large to send.');
+      }
+
+      // Prepare caption
+      const caption = `🎵 Music Track\n📌 Title: ${videoTitle}`;
+
+      // Send audio file
+      await bot.sendAudio(msg.chat.id, filePath, {
+        caption: caption,
+        reply_to_message_id: msg.message_id
+      });
+
+      // Delete processing message
+      await bot.deleteMessage(msg.chat.id, processingMessage.message_id);
+
+      // Clean up temporary file
+      await fs.unlink(filePath);
+
     } catch (error) {
-      console.error('[ERROR]', error);
+      console.error('[Music Download Error]', error);
       
       const errorMessages = [
-        'An error occurred while fetching music information.',
-        'Unable to retrieve music details. Please try again.',
-        'Looks like there was a problem finding the music information.',
-        'The music information retrieval failed. Please check the link.'
+        'An error occurred while downloading the track.',
+        'Unable to download the music. Please try again.',
+        'Looks like there was a problem fetching the song.',
+        'The music download failed. Please check the track name.'
       ];
 
       const randomErrorMessage = errorMessages[Math.floor(Math.random() * errorMessages.length)];
@@ -68,27 +119,5 @@ module.exports = {
         reply_to_message_id: msg.message_id
       });
     }
-  },
-
-  // Helper method to format duration
-  formatDuration(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  },
-
-  // Helper method to format view count
-  formatViews(views) {
-    if (views >= 1000000) {
-      return `${(views / 1000000).toFixed(1)}M`;
-    } else if (views >= 1000) {
-      return `${(views / 1000).toFixed(1)}K`;
-    }
-    return views.toString();
   }
 };
