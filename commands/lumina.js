@@ -2,6 +2,7 @@ const axios = require('axios');
 const gtts = require('gtts');
 const fs = require('fs');
 const path = require('path');
+const { isArray } = require('util');
 
 module.exports = {
   name: 'lumina',
@@ -61,7 +62,7 @@ module.exports = {
 
         const gttsPath = path.join(tempDir, `lumina_voice_${Date.now()}.mp3`);
         
-        function generateVoiceWithSpeed(text, speed = 0.9) {
+        function generateVoiceWithSpeed(text, speed = 1.1) {
           return new Promise((resolve, reject) => {
             const tempVoicePath = path.join(tempDir, `lumina_voice_speed_${Date.now()}.mp3`);
             
