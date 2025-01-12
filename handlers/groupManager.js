@@ -42,7 +42,7 @@ class GroupManager {
       const introMessage = `
 🤖 *Lumina Bot Introduction* 🌟
 
-Hello! I'm Lumina, your intelligent Telegram assistant. 
+Hello! I'm Lumina, your intelligent group management assistant. 
 
 👥 *How to get started:*
 • Add me as an admin
@@ -51,12 +51,11 @@ Hello! I'm Lumina, your intelligent Telegram assistant.
 
 💡 *Tip:* I work best with admin permissions!
 
-*Developed with ❤️ by JohnDev19*
+*Developed with ❤️ by Your Team*
       `;
 
-      // Send introduction photo
-      await this.bot.sendPhoto(chatId, introImage, {
-        caption: introMessage,
+      // Send introduction message
+      await this.bot.sendMessage(chatId, introMessage, {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -68,6 +67,12 @@ Hello! I'm Lumina, your intelligent Telegram assistant.
         }
       });
 
+      // Send introduction photo
+      await this.bot.sendPhoto(chatId, introImage, {
+        caption: 'Lumina - Your Intelligent Group Assistant',
+        parse_mode: 'Markdown'
+      });
+
       // Add chat to database
       this.db.addChat(chatId, {
         title: msg.chat.title || 'Unknown Group',
@@ -75,8 +80,27 @@ Hello! I'm Lumina, your intelligent Telegram assistant.
         addedTimestamp: Date.now()
       });
 
+      // Log bot addition
+      console.log(`Bot added to chat: ${chatId}, Title: ${msg.chat.title || 'Unknown'}`);
+
     } catch (error) {
       console.error('Bot introduction message error:', error);
+      
+      // Fallback error handling
+      try {
+        await this.bot.sendMessage(chatId, 'Hello! I\'m Lumina, ready to help manage this group.', {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '📖 Commands', callback_data: 'show_commands' },
+                { text: '⚙️ Setup', callback_data: 'setup_guide' }
+              ]
+            ]
+          }
+        });
+      } catch (fallbackError) {
+        console.error('Fallback message error:', fallbackError);
+      }
     }
   }
 
@@ -110,31 +134,6 @@ Hello! I'm Lumina, your intelligent Telegram assistant.
 
     } catch (error) {
       console.error('Error in handleUserJoined:', error);
-    }
-  }
-
-  async handleLeftMember(msg) {
-    try {
-      const chatId = msg.chat.id;
-      const leftMember = msg.left_chat_member;
-
-      // Prevent processing if the left member is a bot
-      if (this.isBot(leftMember)) return;
-
-      const goodbyeMessage = this.generateGoodbyeMessage(leftMember.first_name);
-      const goodbyeImageUrl = 'https://i.ibb.co/kqWn2FY/goodbye.png';
-
-      try {
-        await this.bot.sendPhoto(chatId, goodbyeImageUrl, {
-          caption: goodbyeMessage,
-          parse_mode: 'HTML'
-        });
-      } catch (photoError) {
-        console.error('Error sending goodbye photo:', photoError);
-        await this.bot.sendMessage(chatId, goodbyeMessage, { parse_mode: 'HTML' });
-      }
-    } catch (error) {
-      console.error('Error in handleLeftMember:', error);
     }
   }
 
