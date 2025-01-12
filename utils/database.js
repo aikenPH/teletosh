@@ -12,15 +12,7 @@ class Database {
       return JSON.parse(rawData);
     } catch (error) {
       console.log('No existing database found. Creating a new one.');
-      return {
-        reminders: [],
-        users: {},
-        groups: [],
-        settings: {
-          maintenanceMode: false,
-          startTime: Date.now()
-        }
-      };
+      return { reminders: [], users: {} };
     }
   }
 
@@ -55,39 +47,6 @@ class Database {
     const user = this.getUser(userId);
     user.points += points;
     this.updateUser(userId, user);
-  }
-
-  // New methods for group management
-  addGroup(groupData) {
-    const existingIndex = this.data.groups.findIndex(g => g.id === groupData.id);
-    if (existingIndex !== -1) {
-      this.data.groups[existingIndex] = { ...this.data.groups[existingIndex], ...groupData };
-    } else {
-      this.data.groups.push(groupData);
-    }
-    this.saveData();
-  }
-
-  removeGroup(groupId) {
-    this.data.groups = this.data.groups.filter(g => g.id !== groupId);
-    this.saveData();
-  }
-
-  getGroup(groupId) {
-    return this.data.groups.find(g => g.id === groupId);
-  }
-
-  getAllGroups() {
-    return this.data.groups;
-  }
-
-  updateSettings(settings) {
-    this.data.settings = { ...this.data.settings, ...settings };
-    this.saveData();
-  }
-
-  getSettings() {
-    return this.data.settings;
   }
 }
 
