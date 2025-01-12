@@ -4,8 +4,6 @@ const Promise = require('bluebird');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const net = require('net');
-
 const CommandHandler = require('./handlers/commandHandler');
 const ModerationTools = require('./handlers/moderationTools');
 const EventReminder = require('./handlers/eventReminder');
@@ -15,8 +13,7 @@ const AutoReactHandler = require('./handlers/autoReactHandler');
 const Database = require('./utils/database');
 const config = require('./config');
 
-const DEFAULT_PORT = 10000;
-const MAX_PORT_ATTEMPTS = 10;
+const PORT = process.env.PORT || 3000;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 
 const botBanner = `
@@ -48,115 +45,56 @@ class LuminaBot {
 
   async initialize() {
     try {
-      this.PORT = await this.findAvailablePort();
-      await this.initializeBotAndServer();
+      if (!config.BOT_TOKEN) {
+        throw new Error('Telegram Bot Token not provided. Please check your .env file.');
+      }
+
+      // Initialize Express app
+      const app = express();
+      app.use(express.json());
+
+      // Initialize bot with webhook configuration
+      this.bot = new TelegramBot(config.BOT_TOKEN, {
+        webHook: {
+          port: PORT,
+          host: '0.0.0.0'
+        }
+      });
+
+      // Set up webhook
+      await this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
+
+      // Set up webhook endpoint
+      app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
+        this.bot.processUpdate(req.body);
+        res.sendStatus(200);
+      });
+
+      // Health check endpoint
+      app.get('/health', (req, res) => {
+        res.status(200).json({
+          status: 'healthy',
+          timestamp: new Date().toISOString()
+        });
+      });
+
+      // Initialize bot info
+      const botInfo = await this.bot.getMe();
+      this.bot.botInfo = botInfo;
+      console.log(`Bot initialized: @${botInfo.username}`);
+      console.log(`Webhook server running on port ${PORT}`);
+
+      // Initialize components
+      await this.initializeComponents();
+
+      console.log('All components initialized successfully');
     } catch (error) {
       console.error('Initialization Error:', error);
       process.exit(1);
     }
   }
 
-  async findAvailablePort(currentAttempt = 1) {
-    const tryPort = DEFAULT_PORT + currentAttempt - 1;
-
-    return new Promise((resolve, reject) => {
-      const server = net.createServer();
-
-      server.once('error', async (err) => {
-        server.close();
-
-        if (err.code === 'EADDRINUSE') {
-          if (currentAttempt < MAX_PORT_ATTEMPTS) {
-            try {
-              const port = await this.findAvailablePort(currentAttempt + 1);
-              resolve(port);
-            } catch (error) {
-              reject(error);
-            }
-          } else {
-            reject(new Error(`Could not find an available port after ${MAX_PORT_ATTEMPTS} attempts`));
-          }
-        } else {
-          reject(err);
-        }
-      });
-
-      server.once('listening', () => {
-        const port = server.address().port;
-        server.close(() => {
-          resolve(port);
-        });
-      });
-
-      server.listen(tryPort, '0.0.0.0');
-    });
-  }
-
-  async initializeBotAndServer() {
-    if (!config.BOT_TOKEN) {
-      throw new Error('Telegram Bot Token not provided. Please check your .env file.');
-    }
-
-    // Initialize Express app first
-    const app = express();
-    app.use(express.json());
-
-    // Create server instance
-    const server = app.listen(this.PORT, '0.0.0.0');
-
-    // Handle server errors
-    server.on('error', async (error) => {
-      if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${this.PORT} is in use, attempting to find new port...`);
-        server.close();
-        this.PORT = await this.findAvailablePort();
-        server.listen(this.PORT, '0.0.0.0');
-      } else {
-        console.error('Server Error:', error);
-        process.exit(1);
-      }
-    });
-
-    // Initialize Telegram Bot after server is successfully running
-    server.on('listening', () => {
-      console.log(`Server is running on port ${this.PORT}`);
-      
-      this.bot = new TelegramBot(config.BOT_TOKEN, {
-        webHook: {
-          port: this.PORT
-        }
-      });
-
-      // Set webhook
-      this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
-
-      // Webhook route
-      app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
-        this.bot.processUpdate(req.body);
-        res.sendStatus(200);
-      });
-
-      // Health check route
-      app.get('/health', (req, res) => {
-        res.status(200).json({
-          status: 'healthy',
-          port: this.PORT,
-          timestamp: new Date().toISOString()
-        });
-      });
-
-      // Get bot info
-      this.bot.getMe().then(botInfo => {
-        this.bot.botInfo = botInfo;
-        console.log(`Bot initialized: @${botInfo.username}`);
-        this.initializeComponents();
-      }).catch(error => {
-        console.error('Error getting bot information:', error);
-      });
-    });
-  }
-
-  initializeComponents() {
+  async initializeComponents() {
     this.db = new Database();
     this.commandHandler = new CommandHandler(this.bot, this.db);
     this.moderationTools = new ModerationTools(this.bot, this.db);
@@ -239,9 +177,6 @@ class LuminaBot {
 // Global error handling
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  if (error.code === 'EADDRINUSE') {
-    console.error(`Port ${error.port} is already in use. The application will attempt to find an alternative port.`);
-  }
 });
 
 process.on('unhandledRejection', (error) => {
