@@ -12,109 +12,14 @@ class GroupManager {
       const chatId = msg.chat.id;
       const newMember = msg.new_chat_member;
 
-      // Separate handling for bot and user
-      if (this.isBot(newMember)) {
-        await this.handleBotAdded(msg);
-      } else if (this.isUser(newMember)) {
-        await this.handleUserJoined(msg);
+      if (newMember.id === this.bot.botInfo.id) {
+        await this.sendBotIntroduction(chatId);
+        return;
       }
-    } catch (error) {
-      console.error('Error in handleNewMember:', error);
-    }
-  }
-
-  // Check if the member is a bot
-  isBot(member) {
-    return member.is_bot && 
-           member.username === process.env.BOT_USERNAME;
-  }
-
-  // Check if the member is a user
-  isUser(member) {
-    return !member.is_bot;
-  }
-
-  async handleBotAdded(msg) {
-    const chatId = msg.chat.id;
-    const introImage = 'https://i.ibb.co/3YN5ggW/lumina.jpg';
-
-    try {
-      const introMessage = `
-🤖 *Lumina Bot Introduction* 🌟
-
-Hello! I'm Lumina, your intelligent group management assistant. 
-
-👥 *How to get started:*
-• Add me as an admin
-• Use /help to see available commands
-• Customize settings with /settings
-
-💡 *Tip:* I work best with admin permissions!
-
-*Developed with ❤️ by Your Team*
-      `;
-
-      // Send introduction message
-      await this.bot.sendMessage(chatId, introMessage, {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '📖 View Commands', callback_data: 'show_commands' },
-              { text: '⚙️ Setup Guide', callback_data: 'setup_guide' }
-            ]
-          ]
-        }
-      });
-
-      // Send introduction photo
-      await this.bot.sendPhoto(chatId, introImage, {
-        caption: 'Lumina - Your Intelligent Group Assistant',
-        parse_mode: 'Markdown'
-      });
-
-      // Add chat to database
-      this.db.addChat(chatId, {
-        title: msg.chat.title || 'Unknown Group',
-        type: msg.chat.type,
-        addedTimestamp: Date.now()
-      });
-
-      // Log bot addition
-      console.log(`Bot added to chat: ${chatId}, Title: ${msg.chat.title || 'Unknown'}`);
-
-    } catch (error) {
-      console.error('Bot introduction message error:', error);
-      
-      // Fallback error handling
-      try {
-        await this.bot.sendMessage(chatId, 'Hello! I\'m Lumina, ready to help manage this group.', {
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: '📖 Commands', callback_data: 'show_commands' },
-                { text: '⚙️ Setup', callback_data: 'setup_guide' }
-              ]
-            ]
-          }
-        });
-      } catch (fallbackError) {
-        console.error('Fallback message error:', fallbackError);
-      }
-    }
-  }
-
-  async handleUserJoined(msg) {
-    try {
-      const chatId = msg.chat.id;
-      const newMember = msg.new_chat_member;
-
-      // Prevent processing if the new member is a bot
-      if (this.isBot(newMember)) return;
 
       const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
       const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
-
+      
       try {
         await this.bot.sendPhoto(chatId, welcomeImageUrl, {
           caption: welcomeMessage,
@@ -124,16 +29,68 @@ Hello! I'm Lumina, your intelligent group management assistant.
         console.error('Error sending welcome photo:', photoError);
         await this.bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'HTML' });
       }
+    } catch (error) {
+      console.error('Error in handleNewMember:', error);
+    }
+  }
 
-      // Update user in database
-      this.db.updateUser(newMember.id, {
-        username: newMember.username,
-        firstName: newMember.first_name,
-        joinedGroups: (this.db.getUser(newMember.id).joinedGroups || 0) + 1
+  async sendBotIntroduction(chatId) {
+    const introMessage = `
+<b>🤖 Hello! I'm Lumina Bot!</b>
+
+Thank you for adding me to your group! I'm here to help manage and enhance your group experience.
+
+<b>🔐 Getting Started:</b>
+1. Make sure I have admin privileges
+2. Use /help to see all available commands
+3. Start using my features!
+
+<i>Developed by JohnDev19 with ❤️</i>
+
+Need help? Just type /help to get started!
+    `;
+
+    try {
+      const botLogoUrl = 'https://i.ibb.co/3YN5ggW/lumina.jpg';
+      await this.bot.sendPhoto(chatId, botLogoUrl, {
+        caption: introMessage,
+        parse_mode: 'HTML'
       });
 
+      const sentMessage = await this.bot.sendMessage(chatId, '📌 <b>Tip:</b> Pin this message for quick access to bot information!', {
+        parse_mode: 'HTML'
+      });
+      
+      try {
+        await this.bot.pinChatMessage(chatId, sentMessage.message_id);
+      } catch (pinError) {
+        console.error('Error pinning introduction message:', pinError);
+      }
     } catch (error) {
-      console.error('Error in handleUserJoined:', error);
+      console.error('Error sending bot introduction:', error);
+      await this.bot.sendMessage(chatId, introMessage, { parse_mode: 'HTML' });
+    }
+  }
+
+  async handleLeftMember(msg) {
+    try {
+      const chatId = msg.chat.id;
+      const leftMember = msg.left_chat_member;
+      const goodbyeMessage = this.generateGoodbyeMessage(leftMember.first_name);
+      
+      const goodbyeImageUrl = 'https://i.ibb.co/kqWn2FY/goodbye.png';
+      
+      try {
+        await this.bot.sendPhoto(chatId, goodbyeImageUrl, {
+          caption: goodbyeMessage,
+          parse_mode: 'HTML'
+        });
+      } catch (photoError) {
+        console.error('Error sending goodbye photo:', photoError);
+        await this.bot.sendMessage(chatId, goodbyeMessage, { parse_mode: 'HTML' });
+      }
+    } catch (error) {
+      console.error('Error in handleLeftMember:', error);
     }
   }
 
@@ -236,7 +193,7 @@ Wishing you all the best! 🌟
     }
   }
 
-    async editTopic(chatId, messageThreadId, name, iconCustomEmojiId) {
+  async editTopic(chatId, messageThreadId, name, iconCustomEmojiId) {
     try {
       const result = await this.bot.editForumTopic(chatId, messageThreadId, name, iconCustomEmojiId);
       return result;
@@ -314,78 +271,7 @@ Wishing you all the best! 🌟
       throw error;
     }
   }
-
-  async getGroupInfo(chatId) {
-    try {
-      const chatInfo = await this.bot.getChat(chatId);
-      return {
-        id: chatInfo.id,
-        title: chatInfo.title,
-        type: chatInfo.type,
-        description: chatInfo.description,
-        memberCount: await this.bot.getChatMembersCount(chatId)
-      };
-    } catch (error) {
-      console.error('Error getting group info:', error);
-      throw error;
-    }
-  }
-
-  async listAdministrators(chatId) {
-    try {
-      const admins = await this.bot.getChatAdministrators(chatId);
-      return admins.map(admin => ({
-        user: {
-          id: admin.user.id,
-          firstName: admin.user.first_name,
-          lastName: admin.user.last_name,
-          username: admin.user.username
-        },
-        status: admin.status
-      }));
-    } catch (error) {
-      console.error('Error listing administrators:', error);
-      throw error;
-    }
-  }
-
-  async setGroupDescription(chatId, description) {
-    try {
-      const permissions = await this.checkBotPermissions(chatId);
-      if (!permissions.canChangeInfo) {
-        throw new Error('Bot does not have permission to change group info');
-      }
-      const result = await this.bot.setChatDescription(chatId, description);
-      return result;
-    } catch (error) {
-      console.error('Error setting group description:', error);
-      throw error;
-    }
-  }
-
-  async exportInviteLink(chatId) {
-    try {
-      const permissions = await this.checkBotPermissions(chatId);
-      if (!permissions.canInviteUsers) {
-        throw new Error('Bot does not have permission to export invite link');
-      }
-      const inviteLink = await this.bot.exportChatInviteLink(chatId);
-      return inviteLink;
-    } catch (error) {
-      console.error('Error exporting invite link:', error);
-      throw error;
-    }
-  }
-
-  async getGroupMemberCount(chatId) {
-    try {
-      const memberCount = await this.bot.getChatMembersCount(chatId);
-      return memberCount;
-    } catch (error) {
-      console.error('Error getting member count:', error);
-      throw error;
-    }
-  }
 }
 
 module.exports = GroupManager;
+
