@@ -1,90 +1,65 @@
-const axios = require('axios');
-const fs = require('fs-extra');
-const ytdl = require('youtube-dl-exec');
-const yts = require('yt-search');
-const path = require('path');
+const ytdl = require('ytdl-core');
+const ytpl = require('ytpl');
 
 module.exports = {
-  name: 'music',
-  description: 'Download and send music from YouTube',
+  name: 'musicinfo',
+  description: 'Get music information from YouTube',
   
   async execute(bot, msg, args) {
     if (args.length === 0) {
-      return bot.sendMessage(msg.chat.id, 'Please provide a music search term.');
+      return bot.sendMessage(msg.chat.id, 'Please provide a YouTube URL or search term.');
     }
 
-    const searchQuery = args.join(' ');
+    const input = args.join(' ');
 
     try {
-      await bot.sendMessage(msg.chat.id, `Searching for music "${searchQuery}". Please wait...`);
+      let songInfo;
 
-      const searchResults = await yts(searchQuery);
-      if (!searchResults.videos.length) {
-        return bot.sendMessage(msg.chat.id, 'No music found.');
+      // Check if input is a valid YouTube URL
+      if (ytdl.validateURL(input)) {
+        songInfo = await ytdl.getInfo(input);
+        const title = songInfo.videoDetails.title;
+        const artist = songInfo.videoDetails.author.name;
+        const duration = this.formatDuration(songInfo.videoDetails.lengthSeconds);
+        const views = this.formatViews(songInfo.videoDetails.viewCount);
+
+        const message = `🎵 Music Information:\n\n` +
+                        `📌 Title: ${title}\n` +
+                        `👤 Artist: ${artist}\n` +
+                        `⏱️ Duration: ${duration}\n` +
+                        `👀 Views: ${views}`;
+
+        await bot.sendMessage(msg.chat.id, message, {
+          reply_to_message_id: msg.message_id
+        });
+      } else {
+        // If not a URL, search for the first result
+        const searchResults = await ytpl.search(input, { limit: 1 });
+        
+        if (searchResults.length === 0) {
+          return bot.sendMessage(msg.chat.id, 'No music found.');
+        }
+
+        const song = searchResults[0];
+        const message = `🎵 Music Information:\n\n` +
+                        `📌 Title: ${song.title}\n` +
+                        `👤 Artist: ${song.author.name}\n` +
+                        `⏱️ Duration: ${song.duration || 'N/A'}\n` +
+                        `👀 Views: ${this.formatViews(song.views)}`;
+
+        await bot.sendMessage(msg.chat.id, message, {
+          reply_to_message_id: msg.message_id
+        });
       }
-
-      const music = searchResults.videos[0];
-      const musicUrl = music.url;
-
-      const tempDir = path.join(__dirname, 'temp');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir);
-      }
-
-      const fileName = `music_${msg.from.id}_${Date.now()}.mp3`;
-      const filePath = path.join(tempDir, fileName);
-
-      const userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      ];
-
-      const selectedUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
-
-      await ytdl(musicUrl, {
-        output: filePath,
-        extractAudio: true,
-        audioFormat: 'mp3',
-        noOverwrites: true,
-        noWarnings: true,
-        noCheckCertificate: true,
-        userAgent: selectedUserAgent,
-        addHeader: [
-          `User-Agent: ${selectedUserAgent}`,
-          'Accept-Language: en-US,en;q=0.9',
-          'Referer: https://www.youtube.com/',
-          'DNT: 1'
-        ],
-        bypassAge: true,
-        geo: 'US',
-        referer: 'https://www.youtube.com/',
-        cookies: path.join(__dirname, 'youtube_cookies.txt')
-      });
-
-      const fileStats = await fs.stat(filePath);
-      if (fileStats.size > 26214400) {
-        await fs.unlink(filePath);
-        return bot.sendMessage(msg.chat.id, 'The file could not be sent because it is larger than 25MB.');
-      }
-
-      const message = `🎵 Here's your music\n\n𝗧𝗜𝗧𝗟𝗘: ${music.title}\n𝗗𝗨𝗥𝗔𝗧𝗜𝗢𝗡: ${music.duration.timestamp}\n𝗩𝗜𝗘𝗪𝗦: ${music.views}`;
-
-      await bot.sendAudio(msg.chat.id, filePath, {
-        caption: message,
-        reply_to_message_id: msg.message_id
-      });
-
-      await fs.unlink(filePath);
 
     } catch (error) {
       console.error('[ERROR]', error);
       
       const errorMessages = [
-        'An error occurred while processing the command.',
-        'Unable to download the music. Please try again.',
-        'Looks like there was a problem fetching the music.',
-        'The music download failed. Please check the link.'
+        'An error occurred while fetching music information.',
+        'Unable to retrieve music details. Please try again.',
+        'Looks like there was a problem finding the music information.',
+        'The music information retrieval failed. Please check the link.'
       ];
 
       const randomErrorMessage = errorMessages[Math.floor(Math.random() * errorMessages.length)];
@@ -95,20 +70,25 @@ module.exports = {
     }
   },
 
-  async createYoutubeCookiesFile() {
-    const cookiesContent = `
-# Netscape HTTP Cookie File
-# Created by youtube-dl to bypass bot detection
-# DO NOT EDIT
+  // Helper method to format duration
+  formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
 
-.youtube.com	TRUE	/	FALSE	1735689600	CONSENT	YES+cb.20210328-17-p0.en+FX
-    `;
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  },
 
-    const cookiesPath = path.join(__dirname, 'youtube_cookies.txt');
-    await fs.writeFile(cookiesPath, cookiesContent);
-    console.log('YouTube cookies file created successfully');
+  // Helper method to format view count
+  formatViews(views) {
+    if (views >= 1000000) {
+      return `${(views / 1000000).toFixed(1)}M`;
+    } else if (views >= 1000) {
+      return `${(views / 1000).toFixed(1)}K`;
+    }
+    return views.toString();
   }
 };
-
-// Automatically create cookies file on module load
-module.exports.createYoutubeCookiesFile();
