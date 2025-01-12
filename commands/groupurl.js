@@ -47,41 +47,49 @@ module.exports = {
 
 async function generateGroupInviteLink(bot, chatId) {
   try {
-    try {
-      const inviteLink = await bot.exportChatInviteLink(chatId);
-      
-      if (inviteLink && inviteLink.startsWith('https://t.me/')) {
-        return inviteLink;
-      }
-    } catch (exportError) {}
+    // Ensure bot is a member of the group
+    const botMember = await bot.getChatMember(chatId, bot.botInfo.id);
+    
+    // Check if bot has rights to generate invite link
+    if (botMember.status !== 'administrator' && botMember.status !== 'creator') {
+      throw new Error('Bot must be an admin to generate invite link');
+    }
 
+    // Primary method: Create a new invite link
     try {
       const newInviteLink = await bot.createChatInviteLink(chatId, {
         expire_date: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
         member_limit: 0
       });
 
-      if (newInviteLink.invite_link && newInviteLink.invite_link.startsWith('https://t.me/')) {
+      if (newInviteLink && newInviteLink.invite_link) {
         return newInviteLink.invite_link;
       }
-    } catch (createError) {}
+    } catch (createLinkError) {}
 
-    const chatUsername = await getChatUsername(bot, chatId);
-    if (chatUsername) {
-      return `https://t.me/${chatUsername}`;
-    }
+    // Secondary method: Export existing invite link
+    try {
+      const existingLink = await bot.exportChatInviteLink(chatId);
+      if (existingLink) {
+        return existingLink;
+      }
+    } catch (exportError) {}
 
-    throw new Error('Unable to generate a valid invite link');
+    // Tertiary method: Get chat info for username
+    try {
+      const chat = await bot.getChat(chatId);
+      if (chat.username) {
+        return `https://t.me/${chat.username}`;
+      }
+    } catch (chatError) {}
+
+    // If all methods fail, construct a manual invite link
+    const numericId = chatId.toString().replace('-100', '');
+    const manualLink = `https://t.me/+${numericId}`;
+
+    throw new Error(`Unable to generate invite link. Manual link: ${manualLink}`);
+
   } catch (error) {
     throw error;
-  }
-}
-
-async function getChatUsername(bot, chatId) {
-  try {
-    const chat = await bot.getChat(chatId);
-    return chat.username || null;
-  } catch (error) {
-    return null;
   }
 }
