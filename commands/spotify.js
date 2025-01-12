@@ -1,6 +1,8 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const ytdl = require('ytdl-core');
+const yts = require('yt-search');
 
 module.exports = {
   name: 'spotify',
@@ -37,7 +39,7 @@ module.exports = {
         params: {
           q: query,
           type: 'track',
-          limit: 5  // Increased to show multiple results
+          limit: 5
         },
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -76,58 +78,57 @@ module.exports = {
           const artists = track.artists.map(artist => artist.name).join(', ');
           const albumCover = track.album.images[0]?.url;
           const spotifyUrl = track.external_urls.spotify;
-          const previewUrl = track.preview_url;
 
-          // Send Detailed Track Information
+          // Search YouTube for full track
+          const searchResult = await yts(`${trackName} ${artists}`);
+          const videoUrl = searchResult.videos[0]?.url;
+
+          if (!videoUrl) {
+            return bot.sendMessage(msg.chat.id, '❌ Could not find track on YouTube');
+          }
+
+          // Send Track Information
           const infoMessage = await bot.sendPhoto(msg.chat.id, albumCover || '', {
             caption: `🎵 Track: ${trackName}\n👤 Artist: ${artists}\n💿 Album: ${track.album.name}`,
             reply_markup: {
               inline_keyboard: [
                 [{ text: '🔗 Open on Spotify', url: spotifyUrl }],
-                [{ text: '🎧 30s Preview', callback_data: 'spotify_preview' }]
+                [{ text: '📥 Download MP3', callback_data: 'spotify_download_mp3'}]
               ]
             }
           });
 
-          // Preview Handling
-          bot.on('callback_query', async (previewCallback) => {
-            if (previewCallback.data === 'spotify_preview' && previewUrl) {
+          // Download MP3 Handling
+          bot.on('callback_query', async (downloadCallback) => {
+            if (downloadCallback.data === 'spotify_download_mp3') {
               try {
-                // Download Preview
-                const tempAudioPath = path.join(__dirname, 'temp', `spotify_preview_${Date.now()}.mp3`);
+                const tempAudioPath = path.join(__dirname, 'temp', `spotify_track_${Date.now()}.mp3`);
                 
-                const previewResponse = await axios({
-                  method: 'get',
-                  url: previewUrl,
-                  responseType: 'stream'
-                });
-
-                const writer = fs.createWriteStream(tempAudioPath);
-                previewResponse.data.pipe(writer);
-
+                // Download audio from YouTube
                 await new Promise((resolve, reject) => {
-                  writer.on('finish', resolve);
-                  writer.on('error', reject);
+                  ytdl(videoUrl, { filter: 'audioonly' })
+                    .pipe(fs.createWriteStream(tempAudioPath))
+                    .on('finish', resolve)
+                    .on('error', reject);
                 });
 
-                // Send Preview Audio
+                // Send MP3 Audio
                 await bot.sendAudio(msg.chat.id, tempAudioPath, {
-                  title: `${trackName} (Preview)`,
+                  title: trackName,
                   performer: artists
                 });
 
                 // Cleanup
                 fs.unlinkSync(tempAudioPath);
 
-                // Answer Callback Query
-                await bot.answerCallbackQuery(previewCallback.id, {
-                  text: '🎵 Playing 30s Preview'
+                await bot.answerCallbackQuery(downloadCallback.id, {
+                  text: '✅ MP3 Downloaded Successfully'
                 });
 
-              } catch (previewError) {
-                console.error('Preview Download Error:', previewError);
-                await bot.answerCallbackQuery(previewCallback.id, {
-                  text: '❌ Preview unavailable',
+              } catch (downloadError) {
+                console.error('MP3 Download Error:', downloadError);
+                await bot.answerCallbackQuery(downloadCallback.id, {
+                  text: '❌ Download failed',
                   show_alert: true
                 });
               }
@@ -142,7 +143,6 @@ module.exports = {
     } catch (error) {
       console.error('Spotify API Error:', error);
       
-      // Detailed Error Handling
       const errorMessage = error.response 
         ? `API Error: ${error.response.status} - ${error.response.data.error.message}`
         : 'Network error occurred';
