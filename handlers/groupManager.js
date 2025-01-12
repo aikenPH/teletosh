@@ -20,54 +20,31 @@ class GroupManager {
       const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
       
       if (botOwnerId) {
-        try {
-          // Generate invite link
-          const chatInviteLink = await this.generateGroupInviteLink(chatId);
-          
-          const ownerNotificationMessage = `
+        const ownerNotificationMessage = `
 🌟 <b>New Group Addition Alert!</b> 🌟
 
 📍 Group Details:
 • Name: ${msg.chat.title || 'Unnamed Group'}
 • Type: ${msg.chat.type}
+• Chat ID: <code>${chatId}</code>
 • Members: ${msg.chat.members_count || 'Unknown'}
 
-🔗 Invite Link: ${chatInviteLink}
+👤 Added by: @${msg.from.username || 'Unknown User'}
+• User ID: <code>${msg.from.id}</code>
 
-Added by: @${msg.from.username || 'Unknown User'}
-          `;
+📅 Added at: ${new Date().toUTCString()}
+        `;
 
-          await this.bot.sendMessage(botOwnerId, ownerNotificationMessage, {
-            parse_mode: 'HTML',
-            disable_web_page_preview: true
-          });
-        } catch (linkError) {
-          console.error('Error generating invite link:', linkError);
-          
-          // Fallback notification without invite link
-          const fallbackMessage = `
-🌟 <b>New Group Addition Alert!</b> 🌟
-
-📍 Group Details:
-• Name: ${msg.chat.title || 'Unnamed Group'}
-• Type: ${msg.chat.type}
-• Members: ${msg.chat.members_count || 'Unknown'}
-
-❗ Could not generate invite link
-
-Added by: @${msg.from.username || 'Unknown User'}
-          `;
-
-          await this.bot.sendMessage(botOwnerId, fallbackMessage, {
-            parse_mode: 'HTML'
-          });
-        }
+        await this.bot.sendMessage(botOwnerId, ownerNotificationMessage, {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        });
       }
       
       return;
     }
 
-    // Handle regular user welcome
+    // Existing welcome logic for new members
     const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
     const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
     
@@ -82,25 +59,6 @@ Added by: @${msg.from.username || 'Unknown User'}
     }
   } catch (error) {
     console.error('Error in handleNewMember:', error);
-  }
-}
-
-// New method to generate invite link
-async generateGroupInviteLink(chatId) {
-  try {
-    // Check if bot has invite link permissions
-    const permissions = await this.checkBotPermissions(chatId);
-    
-    if (!permissions.canInviteUsers) {
-      throw new Error('Bot cannot generate invite links');
-    }
-
-    // Create an export invite link that doesn't expire
-    const inviteLink = await this.bot.exportChatInviteLink(chatId);
-    return inviteLink;
-  } catch (error) {
-    console.error('Error generating group invite link:', error);
-    throw error;
   }
 }
 
