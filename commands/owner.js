@@ -4,33 +4,45 @@ module.exports = {
   
   async execute(bot, msg, args, db) {
     try {
-      const ownerId = process.env.OWNER_ID;
+      const ownerId = process.env.OWNER_ID 
+        ? parseInt(process.env.OWNER_ID) 
+        : null;
       
       if (!ownerId) {
         return bot.sendMessage(msg.chat.id, '❌ Owner information is not configured.');
       }
 
+      let ownerUser;
+      let ownerPhotos;
+
       try {
-        // Fetch owner's user profile
-        const ownerProfile = await bot.getChat(ownerId);
+        const chatMembers = await bot.getChatAdministrators(msg.chat.id);
+        const foundMember = chatMembers.find(member => 
+          member.user.id === ownerId
+        );
 
-        // Prepare owner details
-        const ownerInfo = {
-          id: ownerProfile.id,
-          first_name: ownerProfile.first_name || 'Not Available',
-          last_name: ownerProfile.last_name || '',
-          username: ownerProfile.username ? `@${ownerProfile.username}` : 'No Username',
-          language_code: ownerProfile.language_code || 'Not Available'
-        };
+        ownerUser = foundMember 
+          ? foundMember.user 
+          : { id: ownerId, first_name: 'Bot Owner' };
 
-        // Construct detailed message
-        const ownerMessage = `
-👤 Bot Owner Information:
+      } catch (memberError) {
+        console.error('Member search error:', memberError);
+        ownerUser = { id: ownerId, first_name: 'Bot Owner' };
+      }
 
-📌 Name: ${ownerInfo.first_name} ${ownerInfo.last_name}
-🆔 User ID: ${ownerInfo.id}
-👥 Username: ${ownerInfo.username}
-🌐 Language: ${ownerInfo.language_code}
+      try {
+        ownerPhotos = await bot.getUserProfilePhotos(ownerId);
+      } catch (photoError) {
+        console.error('Profile photo error:', photoError);
+        ownerPhotos = null;
+      }
+
+      const ownerDetails = `
+📋 <b>Bot Owner Information</b>
+
+👤 Name: ${ownerUser.first_name || ''} ${ownerUser.last_name || ''}
+🆔 User ID: <code>${ownerUser.id}</code>
+👥 Username: ${ownerUser.username ? '@' + ownerUser.username : 'No username'}
 
 🤖 Bot Ownership:
 • Responsible for bot maintenance
@@ -39,40 +51,27 @@ module.exports = {
 
 📞 Contact Methods:
 • Telegram Direct Message
-• Username: ${ownerInfo.username}
-        `;
+• Username: ${ownerUser.username ? '@' + ownerUser.username : 'Not Available'}
 
-        // Try to get and send profile photo
-        try {
-          const userProfilePhotos = await bot.getUserProfilePhotos(ownerId, {
-            limit: 1
-          });
+🌐 Chat Details:
+💬 Current Chat ID: <code>${msg.chat.id}</code>
+📊 Chat Type: ${msg.chat.type}
+      `;
 
-          if (userProfilePhotos.total_count > 0) {
-            const photoId = userProfilePhotos.photos[0][0].file_id;
-
-            // Send message with photo
-            await bot.sendPhoto(msg.chat.id, photoId, {
-              caption: ownerMessage
-            });
-          } else {
-            // If no profile photo, send text message
-            await bot.sendMessage(msg.chat.id, ownerMessage);
-          }
-        } catch (photoError) {
-          console.error('Error fetching owner profile photo:', photoError);
-          // Fallback to sending text message
-          await bot.sendMessage(msg.chat.id, ownerMessage);
-        }
-
-      } catch (profileError) {
-        console.error('Error fetching owner profile:', profileError);
-        await bot.sendMessage(msg.chat.id, '❌ Unable to retrieve owner information.');
+      if (ownerPhotos && ownerPhotos.photos.length > 0) {
+        await bot.sendPhoto(msg.chat.id, ownerPhotos.photos[0][0].file_id, {
+          caption: ownerDetails,
+          parse_mode: 'HTML'
+        });
+      } else {
+        await bot.sendMessage(msg.chat.id, ownerDetails, {
+          parse_mode: 'HTML'
+        });
       }
 
     } catch (error) {
       console.error('Owner Command Error:', error);
-      await bot.sendMessage(msg.chat.id, '❌ An unexpected error occurred.');
+      await bot.sendMessage(msg.chat.id, '❌ An unexpected error occurred while retrieving owner information.');
     }
   }
 };
