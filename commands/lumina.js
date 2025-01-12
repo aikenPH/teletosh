@@ -31,13 +31,10 @@ module.exports = {
     ];
 
     try {
-      // Send typing action
       await bot.sendChatAction(msg.chat.id, 'typing');
 
-      // Randomly select a user agent
       const selectedUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
 
-      // Fetch AI response
       const response = await axios.get(`https://myapi-2f5b.onrender.com/aichat`, {
         params: { query: query },
         headers: {
@@ -52,27 +49,20 @@ module.exports = {
         }
       });
 
-      // Ensure temp directory exists
       const tempDir = path.join(__dirname, 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir);
       }
 
-      // Prepare response
       if (response.data && response.data.response) {
-        // Filter and modify the response
         let aiResponse = response.data.response;
         
-        // Replace asterisks with arrow symbols
         aiResponse = aiResponse.replace(/\*/g, '➤');
 
-        // Generate unique filename
         const gttsPath = path.join(tempDir, `lumina_voice_${Date.now()}.mp3`);
         
-        // Create custom voice generation function with speed modification
-        function generateVoiceWithSpeed(text, speed = 1.5) {
+        function generateVoiceWithSpeed(text, speed = 0.9) {
           return new Promise((resolve, reject) => {
-            // Create temporary file for modified speed
             const tempVoicePath = path.join(tempDir, `lumina_voice_speed_${Date.now()}.mp3`);
             
             const gttsInstance = new gtts(text, 'en-US');
@@ -83,7 +73,6 @@ module.exports = {
                 return;
               }
 
-              // Use ffmpeg to modify speed (requires ffmpeg installed)
               const { exec } = require('child_process');
               exec(`ffmpeg -i ${gttsPath} -filter:a "atempo=${speed}" ${tempVoicePath}`, 
                 (ffmpegError) => {
@@ -93,7 +82,6 @@ module.exports = {
                     return;
                   }
                   
-                  // Remove original file and use speed-modified file
                   fs.unlinkSync(gttsPath);
                   resolve(tempVoicePath);
                 }
@@ -102,28 +90,22 @@ module.exports = {
           });
         }
 
-        // Save and send voice
         await new Promise(async (resolve, reject) => {
           try {
-            // Send text response first (only message with reply)
             const textMessage = await bot.sendMessage(msg.chat.id, aiResponse, {
               reply_to_message_id: msg.message_id
             });
 
-            // Generate voice with speed modification
             const voicePath = await generateVoiceWithSpeed(aiResponse);
 
-            // Send voice without reply
             await bot.sendVoice(msg.chat.id, voicePath);
 
-            // Clean up temporary file
             fs.unlinkSync(voicePath);
               
             resolve();
           } catch (sendError) {
             console.error("Message Send Error:", sendError);
             
-            // Fallback to text message
             await bot.sendMessage(msg.chat.id, aiResponse, {
               reply_to_message_id: msg.message_id
             });
@@ -132,7 +114,6 @@ module.exports = {
           }
         });
       } else {
-        // Fallback response if no data received
         const fallbackMessage = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
         
         await bot.sendMessage(msg.chat.id, fallbackMessage, {
@@ -143,7 +124,6 @@ module.exports = {
     } catch (error) {
       console.error('Lumina AI Error:', error);
 
-      // Select and send a random fallback response
       const fallbackMessage = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
       
       await bot.sendMessage(msg.chat.id, fallbackMessage, {
