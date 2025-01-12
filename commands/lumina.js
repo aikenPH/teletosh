@@ -1,12 +1,21 @@
 const axios = require('axios');
-const gtts = require('node-gtts')('en');
-const path = require('path');
+const gtts = require('gtts');
 const fs = require('fs');
+const path = require('path');
 
 module.exports = {
   name: 'lumina',
-  description: 'Interact with Lumina AI assistant',
-  async execute(bot, msg, args) {
+  description: 'Generate AI response with voice',
+  
+  async execute(bot, msg, args, db) {
+    let counter = 1;
+
+    function filterContent(content) {
+      return content
+        .replace(/\/\*/g, "   ➤")
+        .replace(/\*/g, () => counter++);
+    }
+
     if (args.length < 1) {
       return bot.sendMessage(msg.chat.id, '❌ Please provide a message. Usage: /lumina <your message>');
     }
@@ -22,121 +31,92 @@ module.exports = {
     ];
 
     try {
+      // Send typing action
       await bot.sendChatAction(msg.chat.id, 'typing');
 
-      const response = await axios.get('https://myapi-2f5b.onrender.com/aichat', {
+      // Fetch AI response
+      const response = await axios.get(`https://myapi-2f5b.onrender.com/aichat`, {
         params: { query: query },
         headers: {
           'User-Agent': 'Lumina Telegram Bot/1.0',
           'Accept': 'application/json',
-          'Accept-Language': 'en-US,en;q=0.9',
-          'Referer': 'https://t.me/Lumina100_bot',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Accept-Language': 'en-US,en;q=0.9'
         }
       });
 
-      const aiResponse = response.data.response;
-      const responseText = aiResponse || fallbackResponses[0];
-
-      // Create voice response with text chunking
-      const voiceFilePath = await convertTextToSpeech(responseText);
-
-      // Send voice message
-      await bot.sendVoice(msg.chat.id, voiceFilePath, {
-        caption: responseText,
-        reply_to_message_id: msg.message_id
-      });
-
-      // Clean up the temporary voice file
-      fs.unlinkSync(voiceFilePath);
-
-    } catch (error) {
-      console.error('Lumina AI Error:', error);
-
-      const fallbackMessage = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
-
-      if (error.response) {
-        console.error('Error:', {
-          status: error.response.status,
-          data: error.response.data
-        });
+      // Ensure temp directory exists
+      const tempDir = path.join(__dirname, 'temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir);
       }
 
-      try {
-        // Create voice response for fallback message
-        const voiceFilePath = await convertTextToSpeech(fallbackMessage);
+      // Prepare response
+      if (response.data && response.data.response) {
+        const aiResponse = response.data.response;
+        const filteredAnswer = filterContent(aiResponse);
 
-        // Send voice message
-        await bot.sendVoice(msg.chat.id, voiceFilePath, {
-          caption: fallbackMessage,
-          reply_to_message_id: msg.message_id
+        // Generate unique filename
+        const gttsPath = path.join(tempDir, `lumina_voice_${Date.now()}.mp3`);
+        
+        // Create GTTS instance
+        const gttsInstance = new gtts(filteredAnswer, 'en-US', true, 0.50);
+
+        // Save and send voice
+        await new Promise((resolve, reject) => {
+          gttsInstance.save(gttsPath, async (error) => {
+            if (error) {
+              console.error("Voice Generation Error:", error);
+              
+              // Fallback to text message if voice fails
+              await bot.sendMessage(msg.chat.id, filteredAnswer, {
+                reply_to_message_id: msg.message_id
+              });
+              
+              reject(error);
+              return;
+            }
+
+            try {
+              // Send voice message
+              await bot.sendVoice(msg.chat.id, gttsPath, {
+                caption: filteredAnswer,
+                reply_to_message_id: msg.message_id
+              });
+
+              // Clean up temporary file
+              fs.unlinkSync(gttsPath);
+              
+              resolve();
+            } catch (sendError) {
+              console.error("Message Send Error:", sendError);
+              
+              // Fallback to text message
+              await bot.sendMessage(msg.chat.id, filteredAnswer, {
+                reply_to_message_id: msg.message_id
+              });
+              
+              reject(sendError);
+            }
+          });
         });
-
-        // Clean up the temporary voice file
-        fs.unlinkSync(voiceFilePath);
-
-      } catch (voiceError) {
-        console.error('Voice Conversion Error:', voiceError);
+      } else {
+        // Fallback response if no data received
+        const fallbackMessage = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+        
         await bot.sendMessage(msg.chat.id, fallbackMessage, {
           reply_to_message_id: msg.message_id
         });
       }
+
+    } catch (error) {
+      console.error('Lumina AI Error:', error);
+
+      // Select and send a random fallback response
+      const fallbackMessage = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      
+      await bot.sendMessage(msg.chat.id, fallbackMessage, {
+        reply_to_message_id: msg.message_id
+      });
     }
   }
 };
-
-// Text to Speech Conversion Function
-function convertTextToSpeech(text, maxChunkLength = 100) {
-  return new Promise((resolve, reject) => {
-    // Ensure temp directory exists
-    const tempDir = path.join(__dirname, 'temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir);
-    }
-
-    // Generate unique filename
-    const fileName = `lumina_voice_${Date.now()}.mp3`;
-    const filePath = path.join(tempDir, fileName);
-
-    // Function to split long text into chunks
-    function splitTextIntoChunks(inputText, maxLength) {
-      const chunks = [];
-      let currentChunk = '';
-
-      // Split text into sentences
-      const sentences = inputText.split(/([.!?]+)/).filter(Boolean);
-      
-      sentences.forEach(sentence => {
-        if ((currentChunk + sentence).length > maxLength) {
-          chunks.push(currentChunk.trim());
-          currentChunk = '';
-        }
-        currentChunk += sentence;
-      });
-
-      if (currentChunk) {
-        chunks.push(currentChunk.trim());
-      }
-
-      return chunks;
-    }
-
-    // Split long text into chunks
-    const textChunks = text.length > maxChunkLength 
-      ? splitTextIntoChunks(text, maxChunkLength) 
-      : [text];
-
-    // Combine chunks with a pause
-    const combinedText = textChunks.join('. ');
-
-    // Convert text to speech
-    gtts.save(filePath, combinedText, (err) => {
-      if (err) {
-        console.error('Text to Speech Conversion Error:', err);
-        reject(err);
-      } else {
-        resolve(filePath);
-      }
-    });
-  });
-}
