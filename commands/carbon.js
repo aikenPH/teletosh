@@ -110,57 +110,76 @@ ${config.languages.map(lang => `• ${lang}`).join('\n')}
       // Loading message
       const loadingMsg = await bot.sendMessage(msg.chat.id, '🔄 Generating code screenshot...');
 
-      // Carbon API configuration
-      const carbonConfig = {
-        code: code,
-        theme: theme,
-        backgroundColor: config.themes[theme].bg,
-        language: language,
-        paddingVertical: '56px',
-        paddingHorizontal: '56px',
-        dropShadow: true,
-        dropShadowOffset: '10px',
-        dropShadowBlurRadius: '68px',
-        windowTheme: 'none',
-        windowControls: true,
-        widthAdjustment: true,
-        width: 680
-      };
-
       // Multiple API endpoints for redundancy
       const carbonAPIs = [
-        'https://carbonara.solopov.dev/api/cook',
-        'https://carbon-api.vercel.app/api/carbon',
-        'https://carbonara-api.now.sh/api/cook'
+        {
+          url: 'https://carbonara.solopov.dev/api/cook',
+          process: async (code, config) => {
+            const data = JSON.stringify({
+              code: code,
+              theme: config.theme,
+              language: config.language,
+              backgroundColor: config.backgroundColor,
+              dropShadow: true,
+              dropShadowOffset: '10px',
+              dropShadowBlurRadius: '68px',
+              fontFamily: 'Hack',
+              fontSize: '14px',
+              lineHeight: '133%',
+              windowTheme: 'none',
+              windowControls: true,
+              widthAdjustment: true,
+              width: 680
+            });
+
+            return axios.post('https://carbonara.solopov.dev/api/cook', data, {
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              responseType: 'arraybuffer',
+              timeout: 15000
+            });
+          }
+        },
+        {
+          url: 'https://carbon-api.vercel.app/api/carbon',
+          process: async (code, config) => {
+            const params = new URLSearchParams({
+              code: code,
+              theme: config.theme,
+              language: config.language,
+              backgroundColor: config.backgroundColor
+            });
+
+            return axios.get(`https://carbon-api.vercel.app/api/carbon?${params.toString()}`, {
+              responseType: 'arraybuffer',
+              timeout: 15000
+            });
+          }
+        }
       ];
 
       let imageData = null;
       let usedAPI = null;
       let apiErrors = [];
 
-      for (const apiUrl of carbonAPIs) {
-        try {
-          const formData = new FormData();
-          Object.entries(carbonConfig).forEach(([key, value]) => {
-            formData.append(key, value);
-          });
+      const apiConfig = {
+        theme: theme,
+        language: language,
+        backgroundColor: config.themes[theme].bg
+      };
 
-          const response = await axios.post(apiUrl, formData, {
-            headers: {
-              ...formData.getHeaders(),
-              'User-Agent': 'TelegramBot/1.0'
-            },
-            responseType: 'arraybuffer',
-            timeout: 15000
-          });
+      for (const api of carbonAPIs) {
+        try {
+          const response = await api.process(code, apiConfig);
 
           if (response.data && response.data.byteLength > 0) {
             imageData = response.data;
-            usedAPI = apiUrl;
+            usedAPI = api.url;
             break;
           }
         } catch (apiError) {
-          apiErrors.push(`${apiUrl}: ${apiError.message}`);
+          apiErrors.push(`${api.url}: ${apiError.message}`);
           continue;
         }
       }
