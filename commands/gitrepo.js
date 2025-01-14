@@ -43,20 +43,17 @@ module.exports = {
                 repository = repositories[0];
             }
 
-            // Format repository message
-            const message = formatRepoMessage(repository);
-            
-            await bot.sendMessage(chatId, message, {
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-            });
-
-            // Download and send repository
+            // Download repository
             await bot.sendChatAction(chatId, 'upload_document');
             const zipFilePath = await downloadRepository(repository.full_name);
             
+            // Prepare repository details
+            const caption = formatRepoMessage(repository);
+
+            // Send document with caption
             await bot.sendDocument(chatId, zipFilePath, {
-                caption: formatRepoMessage(repository)
+                caption: caption,
+                parse_mode: 'HTML'
             });
 
             // Clean up temporary zip file
@@ -96,17 +93,19 @@ function formatRepoMessage(repo) {
     const updated = new Date(repo.updated_at).toLocaleDateString();
     
     return `
-<b>📚 Repository Details</b>
-<b>Name:</b> ${escapeHtml(repo.full_name)}
-<b>Description:</b> ${escapeHtml(repo.description || 'No description')}
+<b>📚 Repository: ${escapeHtml(repo.full_name)}</b>
+
+<b>📝 Description:</b> ${escapeHtml(repo.description || 'No description')}
 <b>⭐ Stars:</b> ${repo.stargazers_count.toLocaleString()}
-<b>👁 Watchers:</b> ${repo.watchers_count.toLocaleString()}
-<b>🔄 Forks:</b> ${repo.forks_count.toLocaleString()}
+<b>🔀 Forks:</b> ${repo.forks_count.toLocaleString()}
 <b>💻 Language:</b> ${escapeHtml(repo.language || 'Not specified')}
+
 <b>📅 Created:</b> ${created}
 <b>🔄 Last Updated:</b> ${updated}
+<b>📦 Size:</b> ${(repo.size / 1024).toFixed(2)} MB
 <b>🔍 Open Issues:</b> ${repo.open_issues_count}
 <b>📋 License:</b> ${repo.license ? escapeHtml(repo.license.name) : 'Not specified'}
+
 <b>🔗 GitHub:</b> ${repo.html_url}
     `.trim();
 }
@@ -154,6 +153,8 @@ function handleError(bot, chatId, error) {
             default:
                 errorMessage = `❌ Server error (${error.response.status}).`;
         }
+    } else if (error.request) {
+        errorMessage = '❌ Network error. Please check your connection.';
     }
 
     bot.sendMessage(chatId, errorMessage);
