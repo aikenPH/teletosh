@@ -8,39 +8,18 @@ class PasswordGenerator {
     };
   }
 
-  generatePassword(baseWord = '', length = 12, options = {}) {
-    const {
-      useUppercase = true,
-      useLowercase = true,
-      useNumbers = true,
-      useSymbols = true
-    } = options;
-
-    // Validate input
+  generatePassword(baseWord = '', length = 12) {
     if (length < 7 || length > 32) {
       throw new Error('Password length must be between 7 and 32 characters');
     }
 
-    // Build character set dynamically
-    let charset = '';
-    if (useLowercase) charset += this.charsets.lowercase;
-    if (useUppercase) charset += this.charsets.uppercase;
-    if (useNumbers) charset += this.charsets.numbers;
-    if (useSymbols) charset += this.charsets.symbols;
-
-    // Process base word
+    let charset = this.charsets.lowercase + this.charsets.uppercase + this.charsets.numbers + this.charsets.symbols;
     const processedBaseWord = this.processBaseWord(baseWord, length);
-
-    // Calculate additional character length
     const additionalLength = length - processedBaseWord.length;
-    
-    // Generate additional random characters
     const additionalChars = this.generateRandomChars(charset, additionalLength);
-
-    // Combine and shuffle
     const passwordChars = [
       ...processedBaseWord,
-      ...additionalChars.split('')
+      ...additionalChars
     ];
 
     return this.shuffleArray(passwordChars).join('');
@@ -48,21 +27,11 @@ class PasswordGenerator {
 
   processBaseWord(baseWord, totalLength) {
     if (!baseWord) return [];
-    
     const transformedWord = baseWord
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '')
       .slice(0, Math.floor(totalLength / 2));
-    
-    const variations = [
-      transformedWord,
-      transformedWord.split('').reverse().join(''),
-      this.capitalizeFirstLetter(transformedWord)
-    ];
-
-    return variations[Math.floor(Math.random() * variations.length)]
-      .split('')
-      .map(this.randomlyModifyChar);
+    return transformedWord.split('').map(this.randomlyModifyChar);
   }
 
   randomlyModifyChar(char) {
@@ -73,14 +42,9 @@ class PasswordGenerator {
       'o': '0',
       's': '$'
     };
-    
     return Math.random() < 0.3 && modifications[char] 
       ? modifications[char] 
       : char;
-  }
-
-  capitalizeFirstLetter(string) {
-    return string.charAt(0).toUpperCase() + string.slice(1);
   }
 
   generateRandomChars(charset, length) {
@@ -99,55 +63,6 @@ class PasswordGenerator {
     }
     return array;
   }
-
-  evaluatePasswordStrength(password) {
-    const criteria = [
-      { 
-        test: (pw) => pw.length >= 7, 
-        message: '✅ Minimum length met' 
-      },
-      { 
-        test: (pw) => /[a-z]/.test(pw), 
-        message: '✅ Contains lowercase letters' 
-      },
-      { 
-        test: (pw) => /[A-Z]/.test(pw), 
-        message: '✅ Contains uppercase letters' 
-      },
-      { 
-        test: (pw) => /[0-9]/.test(pw), 
-        message: '✅ Contains numbers' 
-      },
-      { 
-        test: (pw) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw), 
-        message: '✅ Contains special characters' 
-      }
-    ];
-
-    const strengths = {
-      weak: { color: '🔴', score: 1 },
-      medium: { color: '🟠', score: 2 },
-      strong: { color: '🟢', score: 3 },
-      very_strong: { color: '🔵', score: 4 }
-    };
-
-    const passedTests = criteria.filter(c => c.test(password));
-    const strengthLevel = this.determineStrengthLevel(passedTests.length);
-
-    return {
-      strength: strengthLevel,
-      passedTests: passedTests.map(t => t.message),
-      color: strengths[strengthLevel].color,
-      score: strengths[strengthLevel].score
-    };
-  }
-
-  determineStrengthLevel(passedTestCount) {
-    if (passedTestCount <= 2) return 'weak';
-    if (passedTestCount <= 3) return 'medium';
-    if (passedTestCount <= 4) return 'strong';
-    return 'very_strong';
-  }
 }
 
 module.exports = {
@@ -157,28 +72,33 @@ module.exports = {
   async execute(bot, msg, args) {
     const passwordGenerator = new PasswordGenerator();
     const baseWord = args[0] || '';
+    const firstName = msg.from.first_name;
+
+    if (!baseWord) {
+      const usageMessage = `
+💡 Usage: /generatepass [base_word]
+- Generates 6 strong passwords based on the base word (if provided).
+- Passwords are between 7 and 32 characters long.
+      `;
+      await bot.sendMessage(msg.chat.id, usageMessage, {
+        parse_mode: 'HTML'
+      });
+      return;
+    }
+
     const passwordLength = 12;
 
     try {
       const passwords = [];
-      const strengthAnalyses = [];
-
       for (let i = 0; i < 6; i++) {
         const password = passwordGenerator.generatePassword(baseWord, passwordLength);
-        const strengthAnalysis = passwordGenerator.evaluatePasswordStrength(password);
-        
-        passwords.push(`<code>${password}</code>`);
-        strengthAnalyses.push(`${strengthAnalysis.color} ${strengthAnalysis.strength.toUpperCase()}`);
+        passwords.push(`<code>${i + 1}: ${password}</code>`);
       }
 
       const responseMessage = `
-🔐 Generated Passwords:
+Hey ${firstName}, here's your generated passwords for "${baseWord}":
+🔐 Generated Passwords:\n\n
 ${passwords.join('\n')}
-
-🛡️ Strength Levels:
-${strengthAnalyses.join('\n')}
-
-💡 Base Word: ${baseWord || 'None'}
       `;
 
       await bot.sendMessage(msg.chat.id, responseMessage, {
