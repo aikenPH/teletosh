@@ -4,10 +4,10 @@ const path = require('path');
 
 module.exports = {
     name: 'gitrepo',
-    description: 'Search and download GitHub repository',
+    description: 'Search and download GitHub repositories',
     async execute(bot, msg, args) {
         if (args.length < 1) {
-            return bot.sendMessage(msg.chat.id, '❌ Usage:\n/gitrepo <username>/<repository>');
+            return bot.sendMessage(msg.chat.id, '❌ Usage:\n/gitrepo <search term>\n/gitrepo <username>/<repository>');
         }
 
         const input = args.join(' ');
@@ -17,18 +17,33 @@ module.exports = {
             await bot.sendChatAction(chatId, 'typing');
 
             let repository;
-            const [username, repoName] = input.split('/');
+            
+            // Check if input contains a slash (specific repository)
+            if (input.includes('/')) {
+                const [username, repoName] = input.split('/');
+                
+                if (!repoName) {
+                    return bot.sendMessage(chatId, '❌ Please use format: username/repository');
+                }
 
-            if (!repoName) {
-                return bot.sendMessage(chatId, '❌ Kindly ensure to use the format: "username/repository."');
+                try {
+                    repository = await getSpecificRepository(username, repoName);
+                } catch (error) {
+                    return bot.sendMessage(chatId, '❌ Repository not found. Check username and repository name.');
+                }
+            } else {
+                // Search for repositories
+                const repositories = await searchRepositories(input);
+                
+                if (repositories.length === 0) {
+                    return bot.sendMessage(chatId, '🔍 No repositories found. Please try different keywords.');
+                }
+                
+                // Take the first (most relevant) result
+                repository = repositories[0];
             }
 
-            try {
-                repository = await getSpecificRepository(username, repoName);
-            } catch (error) {
-                return bot.sendMessage(chatId, '❌ The repository could not be found. Please verify the username and repository name for accuracy.');
-            }
-
+            // Format repository message
             const message = formatRepoMessage(repository);
             
             await bot.sendMessage(chatId, message, {
@@ -38,10 +53,10 @@ module.exports = {
 
             // Download and send repository
             await bot.sendChatAction(chatId, 'upload_document');
-            const zipFilePath = await downloadRepository(`${username}/${repoName}`);
+            const zipFilePath = await downloadRepository(repository.full_name);
             
             await bot.sendDocument(chatId, zipFilePath, {
-                caption: `📦 Repository: ${username}/${repoName}\n🔗 GitHub: https://github.com/${username}/${repoName}`
+                caption: formatRepoMessage(repository)
             });
 
             // Clean up temporary zip file
@@ -53,6 +68,28 @@ module.exports = {
         }
     }
 };
+
+async function searchRepositories(query) {
+    try {
+        const response = await axios.get('https://api.github.com/search/repositories', {
+            params: {
+                q: query,
+                sort: 'stars',
+                order: 'desc',
+                per_page: 1 // Only get the top result
+            },
+            headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'User-Agent': 'GitHub-Repository-Bot'
+            }
+        });
+
+        return response.data.items;
+    } catch (error) {
+        console.error('Repository Search Error:', error);
+        throw error;
+    }
+}
 
 function formatRepoMessage(repo) {
     const created = new Date(repo.created_at).toLocaleDateString();
@@ -68,9 +105,9 @@ function formatRepoMessage(repo) {
 <b>💻 Language:</b> ${escapeHtml(repo.language || 'Not specified')}
 <b>📅 Created:</b> ${created}
 <b>🔄 Last Updated:</b> ${updated}
-<b>📦 Size:</b> ${(repo.size / 1024).toFixed(2)} MB
 <b>🔍 Open Issues:</b> ${repo.open_issues_count}
 <b>📋 License:</b> ${repo.license ? escapeHtml(repo.license.name) : 'Not specified'}
+<b>🔗 GitHub:</b> ${repo.html_url}
     `.trim();
 }
 
