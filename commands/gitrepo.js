@@ -4,178 +4,61 @@ const path = require('path');
 
 module.exports = {
     name: 'gitrepo',
-    description: 'Search and download GitHub repositories',
+    description: 'Search and download GitHub repository',
     async execute(bot, msg, args) {
         if (args.length < 1) {
-            return bot.sendMessage(msg.chat.id, '❌ Usage:\n/gitrepo <search term>\n/gitrepo <username>/<repository>');
+            return bot.sendMessage(msg.chat.id, '❌ Usage:\n/gitrepo <username>/<repository>');
         }
 
         const input = args.join(' ');
         const chatId = msg.chat.id;
 
         try {
-            // Show "typing" status while processing
             await bot.sendChatAction(chatId, 'typing');
 
-            let repositories = [];
-            let isSpecificRepo = false;
+            let repository;
+            const [username, repoName] = input.split('/');
 
-            // Check if input is in username/repository format
-            if (input.includes('/')) {
-                isSpecificRepo = true;
-                const [username, repository] = input.split('/');
-                try {
-                    const repo = await getSpecificRepository(username, repository);
-                    repositories = [repo];
-                } catch (error) {
-                    if (error.response?.status === 404) {
-                        // If specific repo not found, try searching instead
-                        repositories = await searchRepositories(input);
-                        isSpecificRepo = false;
-                    } else {
-                        throw error;
-                    }
-                }
-            } else {
-                repositories = await searchRepositories(input);
+            if (!repoName) {
+                return bot.sendMessage(chatId, '❌ Kindly ensure to use the format: "username/repository."');
             }
 
-            if (repositories.length === 0) {
-                // Try a broader search if no results found
-                repositories = await searchRepositories(input.split(' ')[0]);
+            try {
+                repository = await getSpecificRepository(username, repoName);
+            } catch (error) {
+                return bot.sendMessage(chatId, '❌ The repository could not be found. Please verify the username and repository name for accuracy.');
             }
 
-            if (repositories.length === 0) {
-                return bot.sendMessage(chatId, '🔍 No repositories found. Please try different keywords.');
-            }
+            const message = formatRepoMessage(repository);
+            
+            await bot.sendMessage(chatId, message, {
+                parse_mode: 'HTML',
+                disable_web_page_preview: true
+            });
 
-            // For specific repo search, just show that repo
-            // For keyword search, show up to 5 results
-            const displayRepos = isSpecificRepo ? repositories : repositories.slice(0, 5);
+            // Download and send repository
+            await bot.sendChatAction(chatId, 'upload_document');
+            const zipFilePath = await downloadRepository(`${username}/${repoName}`);
+            
+            await bot.sendDocument(chatId, zipFilePath, {
+                caption: `📦 Repository: ${username}/${repoName}\n🔗 GitHub: https://github.com/${username}/${repoName}`
+            });
 
-            for (const repo of displayRepos) {
-                const message = formatRepoMessage(repo, isSpecificRepo);
-                
-                // Send repository information with download button
-                const keyboard = {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: '⬇️ Download ZIP',
-                                callback_data: `download_${repo.full_name}`
-                            },
-                            {
-                                text: '🔗 View on GitHub',
-                                url: repo.html_url
-                            }
-                        ]
-                    ]
-                };
-
-                await bot.sendMessage(chatId, message, {
-                    parse_mode: 'HTML',
-                    reply_markup: keyboard,
-                    disable_web_page_preview: true
-                });
-            }
-
-            if (!isSpecificRepo && repositories.length > 5) {
-                await bot.sendMessage(
-                    chatId,
-                    `🔍 Showing top 5 results out of ${repositories.length} repositories found.\nFor more specific results, try:\n- Adding more keywords\n- Using username/repository format`
-                );
-            }
+            // Clean up temporary zip file
+            fs.unlinkSync(zipFilePath);
 
         } catch (error) {
             console.error('GitHub Repository Error:', error);
             handleError(bot, chatId, error);
         }
-    },
-
-    // Handle callback for download button
-    async handleCallback(bot, callbackQuery) {
-        const chatId = callbackQuery.message.chat.id;
-        const messageId = callbackQuery.message.message_id;
-
-        if (callbackQuery.data.startsWith('download_')) {
-            const fullName = callbackQuery.data.replace('download_', '');
-            
-            try {
-                await bot.sendChatAction(chatId, 'upload_document');
-                await bot.editMessageReplyMarkup(
-                    {
-                        inline_keyboard: [[{ text: '⏳ Downloading...', callback_data: 'downloading' }]]
-                    },
-                    {
-                        chat_id: chatId,
-                        message_id: messageId
-                    }
-                );
-
-                const zipFilePath = await downloadRepository(fullName);
-                
-                await bot.sendDocument(chatId, zipFilePath, {
-                    caption: `📦 Repository: ${fullName}\n\nDownloaded successfully!`
-                });
-
-                // Restore original keyboard
-                await bot.editMessageReplyMarkup(
-                    {
-                        inline_keyboard: [
-                            [
-                                {
-                                    text: '⬇️ Download ZIP',
-                                    callback_data: `download_${fullName}`
-                                },
-                                {
-                                    text: '🔗 View on GitHub',
-                                    url: `https://github.com/${fullName}`
-                                }
-                            ]
-                        ]
-                    },
-                    {
-                        chat_id: chatId,
-                        message_id: messageId
-                    }
-                );
-
-                fs.unlinkSync(zipFilePath);
-            } catch (error) {
-                console.error('Download Error:', error);
-                handleError(bot, chatId, error);
-                
-                // Restore original keyboard on error
-                await bot.editMessageReplyMarkup(
-                    {
-                        inline_keyboard: [
-                            [
-                                {
-                                    text: '⬇️ Download ZIP',
-                                    callback_data: `download_${fullName}`
-                                },
-                                {
-                                    text: '🔗 View on GitHub',
-                                    url: `https://github.com/${fullName}`
-                                }
-                            ]
-                        ]
-                    },
-                    {
-                        chat_id: chatId,
-                        message_id: messageId
-                    }
-                );
-            }
-        }
     }
 };
 
-function formatRepoMessage(repo, isSpecificRepo) {
+function formatRepoMessage(repo) {
     const created = new Date(repo.created_at).toLocaleDateString();
     const updated = new Date(repo.updated_at).toLocaleDateString();
     
-    let message = `
+    return `
 <b>📚 Repository Details</b>
 <b>Name:</b> ${escapeHtml(repo.full_name)}
 <b>Description:</b> ${escapeHtml(repo.description || 'No description')}
@@ -185,37 +68,10 @@ function formatRepoMessage(repo, isSpecificRepo) {
 <b>💻 Language:</b> ${escapeHtml(repo.language || 'Not specified')}
 <b>📅 Created:</b> ${created}
 <b>🔄 Last Updated:</b> ${updated}
-    `.trim();
-
-    if (isSpecificRepo) {
-        message += `\n<b>📦 Size:</b> ${(repo.size / 1024).toFixed(2)} MB
+<b>📦 Size:</b> ${(repo.size / 1024).toFixed(2)} MB
 <b>🔍 Open Issues:</b> ${repo.open_issues_count}
-<b>📋 License:</b> ${repo.license ? escapeHtml(repo.license.name) : 'Not specified'}`;
-    }
-
-    return message;
-}
-
-async function searchRepositories(query) {
-    try {
-        const response = await axios.get('https://api.github.com/search/repositories', {
-            params: {
-                q: query,
-                sort: 'stars',
-                order: 'desc',
-                per_page: 100 // Get more results to ensure we have alternatives
-            },
-            headers: {
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'GitHub-Repository-Bot'
-            }
-        });
-
-        return response.data.items;
-    } catch (error) {
-        console.error('Repository Search Error:', error);
-        throw error;
-    }
+<b>📋 License:</b> ${repo.license ? escapeHtml(repo.license.name) : 'Not specified'}
+    `.trim();
 }
 
 async function getSpecificRepository(username, repository) {
@@ -253,19 +109,14 @@ function handleError(bot, chatId, error) {
     if (error.response) {
         switch (error.response.status) {
             case 404:
-                errorMessage = '❌ Repository not found. Please check the username and repository name.';
+                errorMessage = '❌ Repository not found.';
                 break;
             case 403:
-                errorMessage = '❌ Rate limit exceeded. Please try again later.';
-                break;
-            case 401:
-                errorMessage = '❌ Authentication failed. Please check the bot configuration.';
+                errorMessage = '❌ Rate limit exceeded. Try again later.';
                 break;
             default:
-                errorMessage = `❌ Server error (${error.response.status}). Please try again later.`;
+                errorMessage = `❌ Server error (${error.response.status}).`;
         }
-    } else if (error.request) {
-        errorMessage = '❌ Network error. Please check your connection and try again.';
     }
 
     bot.sendMessage(chatId, errorMessage);
