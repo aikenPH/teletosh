@@ -12,6 +12,7 @@ const GroupManager = require('./handlers/groupManager');
 const AutoReactHandler = require('./handlers/autoReactHandler');
 const Database = require('./utils/database');
 const config = require('./config');
+const OwnerHandler = require('./handlers/ownerHandler');
 
 const PORT = process.env.PORT || 3000;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
@@ -49,11 +50,9 @@ class LuminaBot {
         throw new Error('Telegram Bot Token not provided. Please check your .env file.');
       }
 
-      // Initialize Express app
       const app = express();
       app.use(express.json());
 
-      // Initialize bot with webhook configuration
       this.bot = new TelegramBot(config.BOT_TOKEN, {
         webHook: {
           port: PORT,
@@ -61,16 +60,13 @@ class LuminaBot {
         }
       });
 
-      // Set up webhook
       await this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
 
-      // Set up webhook endpoint
       app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
         this.bot.processUpdate(req.body);
         res.sendStatus(200);
       });
 
-      // Health check endpoint
       app.get('/health', (req, res) => {
         res.status(200).json({
           status: 'healthy',
@@ -78,13 +74,11 @@ class LuminaBot {
         });
       });
 
-      // Initialize bot info
       const botInfo = await this.bot.getMe();
       this.bot.botInfo = botInfo;
       console.log(`Bot initialized: @${botInfo.username}`);
       console.log(`Webhook server running on port ${PORT}`);
 
-      // Initialize components
       await this.initializeComponents();
 
       console.log('All components initialized successfully');
@@ -102,6 +96,7 @@ class LuminaBot {
     this.automatedResponses = new AutomatedResponses(this.bot, this.db);
     this.groupManager = new GroupManager(this.bot, this.db);
     this.autoReactHandler = new AutoReactHandler(this.bot, this.db);
+    this.ownerHandler = new OwnerHandler(this.bot, this.db);
 
     this.setupEventListeners();
     this.loadCommands();
@@ -162,7 +157,7 @@ class LuminaBot {
     for (const file of commandFiles) {
       const command = require(path.join(commandsPath, file));
       if (command.name !== 'setreminder') {
-        this.commandHandler.addCommand(command.name, command.execute);
+        this.commandHandler.addCommand(command.name, command.execute, command.owner === true);
       }
     }
   }
@@ -174,7 +169,6 @@ class LuminaBot {
   }
 }
 
-// Global error handling
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
@@ -188,3 +182,4 @@ const luminaBot = new LuminaBot();
 console.log('Lumina Bot is running...');
 
 module.exports = LuminaBot;
+
