@@ -18,7 +18,6 @@ module.exports = {
 
             let repository;
             
-            // Check if input contains a slash (specific repository)
             if (input.includes('/')) {
                 const [username, repoName] = input.split('/');
                 
@@ -32,30 +31,24 @@ module.exports = {
                     return bot.sendMessage(chatId, '❌ Repository not found. Check username and repository name.');
                 }
             } else {
-                // Search for repositories
                 const repositories = await searchRepositories(input);
                 
                 if (repositories.length === 0) {
                     return bot.sendMessage(chatId, '🔍 No repositories found. Please try different keywords.');
                 }
                 
-                // Take the first (most relevant) result
                 repository = repositories[0];
             }
 
-            // Download repository
             await bot.sendChatAction(chatId, 'upload_document');
             const zipFilePath = await downloadRepository(repository.full_name);
             
-            // Prepare repository details
             const caption = formatRepoMessage(repository);
 
-            // Send document with caption
             await bot.sendDocument(chatId, zipFilePath, {
                 caption: caption
             });
 
-            // Clean up temporary zip file
             fs.unlinkSync(zipFilePath);
 
         } catch (error) {
@@ -72,7 +65,7 @@ async function searchRepositories(query) {
                 q: query,
                 sort: 'stars',
                 order: 'desc',
-                per_page: 1 // Only get the top result
+                per_page: 1
             },
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
