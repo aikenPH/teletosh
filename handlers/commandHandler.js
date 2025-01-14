@@ -3,15 +3,26 @@ class CommandHandler {
     this.bot = bot;
     this.db = db;
     this.commands = new Map();
+    this.ownerCommands = new Map();
   }
 
-  addCommand(name, handler) {
-    this.commands.set(name, handler);
+  addCommand(name, handler, isOwnerCommand = false) {
+    if (isOwnerCommand) {
+      this.ownerCommands.set(name, handler);
+    } else {
+      this.commands.set(name, handler);
+    }
   }
 
   async handleCommand(msg) {
     const [command, ...args] = msg.text.split(' ');
     const commandName = command.substring(1).toLowerCase();
+    
+    const ownerHandler = this.ownerCommands.get(commandName);
+    if (ownerHandler) {
+      return this.handleOwnerCommand(ownerHandler, msg, args);
+    }
+
     const handler = this.commands.get(commandName);
 
     if (!handler) {
@@ -23,6 +34,20 @@ class CommandHandler {
         await this.checkBotAdminStatus(msg, commandName);
       }
 
+      await handler(this.bot, msg, args, this.db);
+    } catch (error) {
+      this.handleCommandError(msg, error);
+    }
+  }
+
+  async handleOwnerCommand(handler, msg, args) {
+    const ownerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
+    if (!ownerId || msg.from.id !== ownerId) {
+      await this.bot.sendMessage(msg.chat.id, '❌ This command is restricted to the bot owner only.');
+      return;
+    }
+
+    try {
       await handler(this.bot, msg, args, this.db);
     } catch (error) {
       this.handleCommandError(msg, error);
@@ -101,3 +126,4 @@ This will help me serve the group effectively! 🌟
 }
 
 module.exports = CommandHandler;
+
