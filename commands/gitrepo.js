@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = {
-    name: 'gitrepo',
+    name: 'githubdownload',
     description: 'Download GitHub repository as ZIP',
     async execute(bot, msg, args) {
         if (args.length < 1) {
@@ -25,7 +25,7 @@ module.exports = {
                 const results = await searchRepositories(input);
                 
                 if (results.length === 0) {
-                    return bot.sendMessage(chatId, '🔍 No repositories found.');
+                    return bot.sendMessage(chatId, '🔍 I am sorry, but I could not find any repositories matching your search. Please try a broader keyword or check the spelling.');
                 }
 
                 repoInfo = results[0];
@@ -37,7 +37,6 @@ module.exports = {
             // Prepare caption with repository details
             const caption = `
 <b>🔧 Repository Details</b>
-
 <b>Name:</b> ${escapeHtml(repoInfo.full_name)}
 <b>Description:</b> ${escapeHtml(repoInfo.description || 'No description')}
 <b>Stars:</b> ${repoInfo.stargazers_count || 0}
@@ -53,7 +52,7 @@ module.exports = {
                 parse_mode: 'HTML'
             });
 
-            // Clean up temporary ZIP file
+            // Clean up the temporary ZIP file
             fs.unlinkSync(zipFilePath);
 
         } catch (error) {
@@ -63,16 +62,16 @@ module.exports = {
             if (error.response) {
                 switch (error.response.status) {
                     case 404:
-                        bot.sendMessage(chatId, '❌ Repository not found.');
+                        bot.sendMessage(chatId, '❌ I am sorry, but the repository you requested could not be found.');
                         break;
                     case 403:
-                        bot.sendMessage(chatId, '❌ GitHub API rate limit exceeded.');
+                        bot.sendMessage(chatId, '❌ I have exceeded the GitHub API rate limit. Please try again later.');
                         break;
                     default:
-                        bot.sendMessage(chatId, '❌ An error occurred while fetching the repository.');
+                        bot.sendMessage(chatId, '❌ An error occurred while fetching the repository. Please try again.');
                 }
             } else {
-                bot.sendMessage(chatId, '❌ Unable to download repository.');
+                bot.sendMessage(chatId, '❌ I encountered an unexpected error while processing your request.');
             }
         }
     }
@@ -86,7 +85,7 @@ async function searchRepositories(query) {
                 q: query,
                 sort: 'stars',
                 order: 'desc',
-                per_page: 1  // Only get the top result
+                per_page: 10 // Get up to 10 results
             },
             headers: {
                 'Accept': 'application/vnd.github.v3+json'
@@ -119,24 +118,17 @@ async function getSpecificRepository(username, repository) {
 // Download repository as ZIP
 async function downloadRepository(fullName) {
     try {
-        const zipUrl = `https://github.com/${fullName}/archive/refs/heads/main.zip`;
-        
+        const zipUrl = `https://github.com/${fullName}/archive/refs/heads/main.zip`; // Adjust if necessary for the default branch
         const response = await axios({
             method: 'get',
             url: zipUrl,
-            responseType: 'arraybuffer',
-            headers: {
-                'Accept': 'application/zip'
-            }
+            responseType: 'arraybuffer'
         });
 
-        // Generate unique filename
-        const fileName = `${fullName.replace('/', '_')}_${Date.now()}.zip`;
+        const fileName = `${fullName.replace('/', '_')}.zip`;
         const filePath = path.join(__dirname, fileName);
         
-        // Write ZIP file
         fs.writeFileSync(filePath, response.data);
-        
         return filePath;
     } catch (error) {
         console.error('Repository Download Error:', error);
