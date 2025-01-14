@@ -52,8 +52,7 @@ module.exports = {
 
             // Send document with caption
             await bot.sendDocument(chatId, zipFilePath, {
-                caption: caption,
-                parse_mode: 'HTML'
+                caption: caption
             });
 
             // Clean up temporary zip file
@@ -92,22 +91,18 @@ function formatRepoMessage(repo) {
     const created = new Date(repo.created_at).toLocaleDateString();
     const updated = new Date(repo.updated_at).toLocaleDateString();
     
-    return `
-<b>📚 Repository: ${escapeHtml(repo.full_name)}</b>
-
-<b>📝 Description:</b> ${escapeHtml(repo.description || 'No description')}
-<b>⭐ Stars:</b> ${repo.stargazers_count.toLocaleString()}
-<b>🔀 Forks:</b> ${repo.forks_count.toLocaleString()}
-<b>💻 Language:</b> ${escapeHtml(repo.language || 'Not specified')}
-
-<b>📅 Created:</b> ${created}
-<b>🔄 Last Updated:</b> ${updated}
-<b>📦 Size:</b> ${(repo.size / 1024).toFixed(2)} MB
-<b>🔍 Open Issues:</b> ${repo.open_issues_count}
-<b>📋 License:</b> ${repo.license ? escapeHtml(repo.license.name) : 'Not specified'}
-
-<b>🔗 GitHub:</b> ${repo.html_url}
-    `.trim();
+    return `📚 Repository Details
+Name: ${repo.full_name}
+Description: ${repo.description || 'No description'}
+⭐ Stars: ${repo.stargazers_count.toLocaleString()}
+👁 Watchers: ${repo.watchers_count.toLocaleString()}
+🔄 Forks: ${repo.forks_count.toLocaleString()}
+💻 Language: ${repo.language || 'Not specified'}
+📅 Created: ${created}
+🔄 Last Updated: ${updated}
+🔍 Open Issues: ${repo.open_issues_count}
+📋 License: ${repo.license ? repo.license.name : 'Not specified'}
+🔗 GitHub: ${repo.html_url}`.trim();
 }
 
 async function getSpecificRepository(username, repository) {
@@ -158,14 +153,4 @@ function handleError(bot, chatId, error) {
     }
 
     bot.sendMessage(chatId, errorMessage);
-}
-
-function escapeHtml(unsafe) {
-    if (!unsafe) return '';
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
 }
