@@ -2,7 +2,7 @@ const axios = require('axios');
 
 module.exports = {
   name: 'itunes',
-  description: 'Quick iTunes Search with Direct Result',
+  description: 'Quick iTunes Search with Direct Media Result',
   async execute(bot, msg, args) {
     if (args.length < 1) {
       return bot.sendMessage(msg.chat.id, '❌ Please provide a search term. Usage: /itunessearch <term>');
@@ -16,7 +16,7 @@ module.exports = {
         params: { term: query }
       });
 
-      // Filter and get the most relevant result
+      // Find most relevant result
       const result = response.data.find(item => 
         item.wrapperType === 'track' && 
         (item.kind === 'song' || item.kind === 'music-video')
@@ -26,8 +26,8 @@ module.exports = {
         return bot.sendMessage(chatId, '🔍 No music or video results found.');
       }
 
-      // Construct detailed message
-      const message = `
+      // Construct detailed caption
+      const caption = `
 <b>🎵 iTunes Search Result</b>
 
 <b>Artist:</b> ${escapeHtml(result.artistName)}
@@ -36,12 +36,15 @@ module.exports = {
 <b>Genre:</b> ${escapeHtml(result.primaryGenreName)}
 <b>Released:</b> ${new Date(result.releaseDate).getFullYear()}
 <b>Duration:</b> ${formatDuration(result.trackTimeMillis)}
-      `;
 
-      // Prepare media attachments
+<i>Visit:</i> <a href="${result.trackViewUrl}">iTunes Link</a>
+      `.trim();
+
+      // Media sending options
       const mediaOptions = {
-        caption: `${escapeHtml(result.artistName)} - ${escapeHtml(result.trackName)}`,
-        parse_mode: 'HTML'
+        caption: caption,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
       };
 
       // Send media based on type
@@ -50,6 +53,7 @@ module.exports = {
           await bot.sendAudio(chatId, result.previewUrl, mediaOptions);
         } catch (audioError) {
           console.error('Audio Send Error:', audioError);
+          await bot.sendMessage(chatId, '❌ Unable to send audio preview.', { parse_mode: 'HTML' });
         }
       } 
       else if (result.kind === 'music-video' && result.previewUrl) {
@@ -57,26 +61,16 @@ module.exports = {
           await bot.sendVideo(chatId, result.previewUrl, mediaOptions);
         } catch (videoError) {
           console.error('Video Send Error:', videoError);
+          await bot.sendMessage(chatId, '❌ Unable to send video preview.', { parse_mode: 'HTML' });
         }
       }
-
-      // Send artwork if available
-      if (result.artworkUrl100) {
-        try {
-          await bot.sendPhoto(chatId, result.artworkUrl100, {
-            caption: `Artwork: ${escapeHtml(result.artistName)} - ${escapeHtml(result.trackName)}`,
-            parse_mode: 'HTML'
-          });
-        } catch (artworkError) {
-          console.error('Artwork Send Error:', artworkError);
-        }
+      else {
+        // Fallback if no preview available
+        await bot.sendMessage(chatId, caption, { 
+          parse_mode: 'HTML',
+          disable_web_page_preview: true 
+        });
       }
-
-      // Send text description
-      await bot.sendMessage(chatId, message, { 
-        parse_mode: 'HTML',
-        disable_web_page_preview: true 
-      });
 
     } catch (error) {
       console.error('iTunes Search Error:', error);
