@@ -1,11 +1,14 @@
 const axios = require('axios');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
-  name: 'itunes',
-  description: 'iTunes Search with Media Preview',
+  name: 'itunessearch',
+  description: 'Advanced iTunes Search with Robust Media Preview',
   async execute(bot, msg, args) {
     if (args.length < 1) {
-      return bot.sendMessage(msg.chat.id, '❌ Please provide a search term. Usage: /itunes <term>');
+      return bot.sendMessage(msg.chat.id, '❌ Please provide a search term. Usage: /itunessearch <term>');
     }
 
     const query = args.join(' ');
@@ -38,35 +41,33 @@ module.exports = {
 <b>Released:</b> ${new Date(result.releaseDate).getFullYear()}
 <b>Duration:</b> ${formatDuration(result.trackTimeMillis)}
 
-Visit: <a href="${result.trackViewUrl}">iTunes Link</a>
+<i>Visit:</i> <a href="${result.trackViewUrl}">iTunes Link</a>
       `.trim();
 
-      // Determine media type and send accordingly
+      // Media options
       const mediaOptions = {
         caption: caption,
         parse_mode: 'HTML',
         disable_web_page_preview: true
       };
 
-      // Enhanced media handling
+      // Determine media type and send
       if (result.previewUrl) {
         try {
-          switch (result.kind) {
-            case 'song':
-              await sendAudioWithRetry(bot, chatId, result.previewUrl, mediaOptions);
-              break;
-            case 'music-video':
-              await sendVideoWithRetry(bot, chatId, result.previewUrl, mediaOptions);
-              break;
-            default:
-              await bot.sendMessage(chatId, caption, { 
-                parse_mode: 'HTML',
-                disable_web_page_preview: true 
-              });
+          // Download and process media file
+          const mediaPath = await downloadMedia(result.previewUrl, result.kind);
+          
+          if (result.kind === 'song') {
+            await bot.sendAudio(chatId, mediaPath, mediaOptions);
+          } else if (result.kind === 'music-video') {
+            await bot.sendVideo(chatId, mediaPath, mediaOptions);
           }
+
+          // Clean up temporary file
+          fs.unlinkSync(mediaPath);
         } catch (mediaError) {
-          console.error('Media Send Error:', mediaError);
-          await bot.sendMessage(chatId, '❌ Unable to send media preview.', { parse_mode: 'HTML' });
+          console.error('Media Processing Error:', mediaError);
+          await bot.sendMessage(chatId, '❌ Unable to process media preview.', { parse_mode: 'HTML' });
         }
       } else {
         // Fallback if no preview available
@@ -83,43 +84,60 @@ Visit: <a href="${result.trackViewUrl}">iTunes Link</a>
   }
 };
 
-// Enhanced audio sending with multiple retry mechanisms
-async function sendAudioWithRetry(bot, chatId, audioUrl, options, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      await bot.sendAudio(chatId, audioUrl, options);
-      return;
-    } catch (error) {
-      console.error(`Audio Send Attempt ${attempt} Failed:`, error);
-      
-      // Different strategies for different error types
-      if (attempt === retries) {
-        throw error;
-      }
-      
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+// Download media with enhanced format handling
+function downloadMedia(url, mediaType) {
+  return new Promise((resolve, reject) => {
+    const tempDir = path.join(__dirname, 'temp');
+    
+    // Ensure temp directory exists
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir);
     }
-  }
+
+    // Determine file extension
+    const fileExtension = getFileExtension(url, mediaType);
+    const tempFilePath = path.join(tempDir, `media_preview_${Date.now()}${fileExtension}`);
+
+    // Create write stream
+    const writeStream = fs.createWriteStream(tempFilePath);
+
+    // Download file
+    https.get(url, (response) => {
+      // Handle redirects
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        return downloadMedia(response.headers.location, mediaType)
+          .then(resolve)
+          .catch(reject);
+      }
+
+      // Pipe response to file
+      response.pipe(writeStream);
+
+      // Handle completion
+      writeStream.on('finish', () => {
+        writeStream.close();
+        resolve(tempFilePath);
+      });
+    }).on('error', (err) => {
+      fs.unlink(tempFilePath, () => reject(err));
+    });
+  });
 }
 
-// Enhanced video sending with multiple retry mechanisms
-async function sendVideoWithRetry(bot, chatId, videoUrl, options, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      await bot.sendVideo(chatId, videoUrl, options);
-      return;
-    } catch (error) {
-      console.error(`Video Send Attempt ${attempt} Failed:`, error);
-      
-      // Different strategies for different error types
-      if (attempt === retries) {
-        throw error;
-      }
-      
-      // Wait before retrying
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-    }
+// Determine appropriate file extension
+function getFileExtension(url, mediaType) {
+  // Check URL for existing extension
+  const urlExt = path.extname(url);
+  if (urlExt) return urlExt;
+
+  // Default extensions based on media type
+  switch (mediaType) {
+    case 'song':
+      return '.mp3';
+    case 'music-video':
+      return '.mp4';
+    default:
+      return '.m4a';
   }
 }
 
