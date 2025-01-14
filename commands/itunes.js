@@ -4,7 +4,7 @@ const axios = require('axios');
 const searchResultsCache = new Map();
 
 module.exports = {
-  name: 'itunessearch',
+  name: 'itunes',
   description: 'Advanced iTunes Search with Interactive Results',
   
   async execute(bot, msg, args) {
@@ -33,12 +33,13 @@ module.exports = {
       const searchId = `${chatId}_${Date.now()}`;
       searchResultsCache.set(searchId, results);
 
+      // Create keyboard with track information
       const inlineKeyboard = results.slice(0, 5).map((item, index) => [{
-        text: `${item.artistName} - ${item.trackName}`,
+        text: `${index + 1}. ${item.artistName} - ${item.trackName}`,
         callback_data: `itunes_detail_${searchId}_${index}`
       }]);
 
-      await bot.sendMessage(chatId, `🔍 Search Results for "${query}":`, {
+      await bot.sendMessage(chatId, `🎵 Found ${results.length} results for "${query}":`, {
         reply_markup: {
           inline_keyboard: inlineKeyboard
         }
@@ -46,135 +47,68 @@ module.exports = {
 
     } catch (error) {
       console.error('iTunes Search Error:', error);
-      bot.sendMessage(chatId, '❌ Unable to perform iTunes search.');
+      bot.sendMessage(chatId, '❌ Unable to perform iTunes search. Please try again later.');
     }
   },
 
   async handleDetailCallback(bot, query) {
-    const detailMatch = query.data.match(/itunes_detail_(.+)_(\d+)/);
-    if (!detailMatch) return;
-
-    const [, searchId, index] = detailMatch;
-    const results = searchResultsCache.get(searchId);
-
-    if (!results) {
-      return bot.answerCallbackQuery(query.id, 'Search results expired. Please search again.');
-    }
-
-    const item = results[parseInt(index)];
-
-    if (!item) {
-      return bot.answerCallbackQuery(query.id, 'Result not found');
-    }
-
-    let detailMessage = `
-🎵 *Detailed Track Information*
-
-*Artist:* ${item.artistName}
-*Track:* ${item.trackName}
-*Album:* ${item.collectionName}
-*Genre:* ${item.primaryGenreName}
-*Released:* ${new Date(item.releaseDate).getFullYear()}
-*Duration:* ${formatDuration(item.trackTimeMillis)}
-    `;
-
-    const mediaButtons = [];
-
-    // Media preview buttons
-    if (item.previewUrl) {
-      mediaButtons.push([
-        { 
-          text: item.kind === 'song' ? '🎧 Preview Audio' : '🎬 Preview Video', 
-          callback_data: `preview_media_${searchId}_${index}` 
-        }
-      ]);
-    }
-
-    // Artwork button
-    if (item.artworkUrl100) {
-      mediaButtons.push([
-        { 
-          text: '🖼️ Album Artwork', 
-          callback_data: `artwork_${searchId}_${index}` 
-        }
-      ]);
-    }
-
     try {
-      await bot.editMessageText(detailMessage, {
-        chat_id: query.message.chat.id,
-        message_id: query.message.message_id,
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: mediaButtons
-        }
+      const [, searchId, index] = query.data.match(/itunes_detail_(.+)_(\d+)/) || [];
+      
+      if (!searchId || !index) {
+        return bot.answerCallbackQuery(query.id, 'Invalid search data');
+      }
+
+      const results = searchResultsCache.get(searchId);
+      if (!results) {
+        return bot.answerCallbackQuery(query.id, 'Search results expired. Please search again.');
+      }
+
+      const item = results[parseInt(index)];
+      if (!item) {
+        return bot.answerCallbackQuery(query.id, 'Track not found');
+      }
+
+      // Prepare track information
+      const detailMessage = `
+🎵 *${item.trackName}*
+👤 Artist: ${item.artistName}
+💿 Album: ${item.collectionName}
+🎼 Genre: ${item.primaryGenreName}
+📅 Released: ${new Date(item.releaseDate).getFullYear()}
+⏱ Duration: ${formatDuration(item.trackTimeMillis)}`;
+
+      // Send track details first
+      await bot.sendMessage(query.message.chat.id, detailMessage, {
+        parse_mode: 'Markdown'
       });
-    } catch (error) {
-      console.error('Edit Message Error:', error);
-    }
 
-    await bot.answerCallbackQuery(query.id);
-  },
-
-  async handleMediaCallback(bot, query) {
-    const mediaMatch = query.data.match(/preview_media_(.+)_(\d+)/);
-    const artworkMatch = query.data.match(/artwork_(.+)_(\d+)/);
-
-    let searchId, index, results, item;
-
-    // Media Preview
-    if (mediaMatch) {
-      [, searchId, index] = mediaMatch;
-      results = searchResultsCache.get(searchId);
-      
-      if (!results) {
-        return bot.answerCallbackQuery(query.id, 'Search results expired.');
-      }
-
-      item = results[parseInt(index)];
-
+      // Send preview if available
       if (item.previewUrl) {
-        try {
-          if (item.kind === 'song') {
-            await bot.sendAudio(query.message.chat.id, item.previewUrl, {
-              caption: `Preview: ${item.artistName} - ${item.trackName}`
-            });
-          } else if (item.kind === 'music-video') {
-            await bot.sendVideo(query.message.chat.id, item.previewUrl, {
-              caption: `Preview: ${item.artistName} - ${item.trackName}`
-            });
-          }
-        } catch (error) {
-          console.error('Media Send Error:', error);
-          await bot.sendMessage(query.message.chat.id, '❌ Unable to send media preview.');
-        }
-      }
-    }
-
-    // Artwork
-    if (artworkMatch) {
-      [, searchId, index] = artworkMatch;
-      results = searchResultsCache.get(searchId);
-      
-      if (!results) {
-        return bot.answerCallbackQuery(query.id, 'Search results expired.');
-      }
-
-      item = results[parseInt(index)];
-
-      if (item.artworkUrl100) {
-        try {
-          await bot.sendPhoto(query.message.chat.id, item.artworkUrl100, {
-            caption: `Artwork: ${item.artistName} - ${item.trackName}`
+        if (item.kind === 'song') {
+          await bot.sendAudio(query.message.chat.id, item.previewUrl, {
+            caption: `🎧 Preview: ${item.artistName} - ${item.trackName}`
           });
-        } catch (error) {
-          console.error('Artwork Send Error:', error);
-          await bot.sendMessage(query.message.chat.id, '❌ Unable to send artwork.');
+        } else if (item.kind === 'music-video') {
+          await bot.sendVideo(query.message.chat.id, item.previewUrl, {
+            caption: `🎬 Preview: ${item.artistName} - ${item.trackName}`
+          });
         }
       }
-    }
 
-    await bot.answerCallbackQuery(query.id);
+      // Send artwork if available
+      if (item.artworkUrl100) {
+        await bot.sendPhoto(query.message.chat.id, item.artworkUrl100, {
+          caption: `🖼 Artwork: ${item.artistName} - ${item.trackName}`
+        });
+      }
+
+      await bot.answerCallbackQuery(query.id);
+
+    } catch (error) {
+      console.error('Handle Detail Callback Error:', error);
+      bot.answerCallbackQuery(query.id, '❌ Error showing track details');
+    }
   }
 };
 
@@ -182,8 +116,8 @@ module.exports = {
 function formatDuration(ms) {
   if (!ms) return 'N/A';
   const minutes = Math.floor(ms / 60000);
-  const seconds = ((ms % 60000) / 1000).toFixed(0);
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  const seconds = Math.floor((ms % 60000) / 1000);
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 // Cleanup mechanism for search results cache
