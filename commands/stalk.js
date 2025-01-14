@@ -28,7 +28,7 @@ ${targetUser .username ? `👥 Username: @${targetUser .username}` : ''}
 ${targetUser .bio ? `📝 Bio: ${targetUser .bio}` : ''}
 ${targetUser .last_seen ? `🕒 Last Seen: ${targetUser .last_seen}` : ''}
 
-🌐 <b>Chat Details:<b/>
+🌐 <b>Chat Details:</b>
 💬 Chat ID: <code>${msg.chat.id}</code>
 📊 Chat Type: ${msg.chat.type}
       `;
@@ -46,7 +46,7 @@ ${targetUser .last_seen ? `🕒 Last Seen: ${targetUser .last_seen}` : ''}
 
     } catch (error) {
       console.error('Stalk Command Error:', error);
-      bot.sendMessage(msg.chat.id, '❌ An error occurred while retrieving user information.');
+      await bot.sendMessage(msg.chat.id, '❌ An error occurred while retrieving user information.');
     }
   }
 };
