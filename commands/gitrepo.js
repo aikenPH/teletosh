@@ -4,101 +4,143 @@ const path = require('path');
 
 module.exports = {
     name: 'gitrepo',
-    description: 'Search and download GitHub repositories as ZIP files',
+    description: 'Download GitHub repository as ZIP',
     async execute(bot, msg, args) {
         if (args.length < 1) {
-            return bot.sendMessage(msg.chat.id, '❌ Please provide a search query. Usage: /githubdownload <query>');
+            return bot.sendMessage(msg.chat.id, '❌ Usage:\n/githubdownload <query>\n/githubdownload <username>/<repository>');
         }
 
-        const query = args.join(' ');
+        const input = args.join(' ');
         const chatId = msg.chat.id;
 
         try {
-            const results = await searchFiles(query);
+            let repoInfo;
 
-            if (results.length === 0) {
-                return bot.sendMessage(chatId, '🔍 No repositories found.');
+            // Check if input is in username/repository format
+            if (input.includes('/')) {
+                const [username, repository] = input.split('/');
+                repoInfo = await getSpecificRepository(username, repository);
+            } else {
+                // Search for repositories and get the first result
+                const results = await searchRepositories(input);
+                
+                if (results.length === 0) {
+                    return bot.sendMessage(chatId, '🔍 No repositories found.');
+                }
+
+                repoInfo = results[0];
             }
 
-            // Display results and prompt for selection
-            let resultMessage = 'Search Results:\n';
-            results.forEach(repo => {
-                resultMessage += `[${repo.id}] ${repo.name}\n`;
-                resultMessage += `   Stars: ${repo.stars}\n`;
-                resultMessage += `   Description: ${repo.description}\n\n`;
-            });
+            // Download repository ZIP
+            const zipFilePath = await downloadRepository(repoInfo.full_name);
 
-            // Send the results to the user
-            await bot.sendMessage(chatId, resultMessage);
-
-            // For simplicity, we will just download the first repository
-            const selectedRepo = results[0]; // Change this to allow user selection if needed
-            const zipFilePath = await downloadRepository(selectedRepo.url, selectedRepo.name);
-
-            // Send the ZIP file as an attachment
+            // Prepare caption with repository details
             const caption = `
-<b>Repository Details</b>
-<b>Name:</b> ${escapeHtml(selectedRepo.name)}
-<b>Description:</b> ${escapeHtml(selectedRepo.description)}
-<b>Stars:</b> ${selectedRepo.stars}
-<i>Visit:</i> <a href="${selectedRepo.url}">GitHub Link</a>
+<b>🔧 Repository Details</b>
+
+<b>Name:</b> ${escapeHtml(repoInfo.full_name)}
+<b>Description:</b> ${escapeHtml(repoInfo.description || 'No description')}
+<b>Stars:</b> ${repoInfo.stargazers_count || 0}
+<b>Language:</b> ${escapeHtml(repoInfo.language || 'Not specified')}
+<b>Created:</b> ${new Date(repoInfo.created_at).toLocaleDateString()}
+
+<i>Visit:</i> <a href="${repoInfo.html_url}">GitHub Repository</a>
             `.trim();
 
-            await bot.sendDocument(chatId, zipFilePath, { caption: caption, parse_mode: 'HTML' });
+            // Send ZIP file as document
+            await bot.sendDocument(chatId, zipFilePath, {
+                caption: caption,
+                parse_mode: 'HTML'
+            });
 
-            // Clean up the temporary file after sending
+            // Clean up temporary ZIP file
             fs.unlinkSync(zipFilePath);
 
         } catch (error) {
-            console.error('GitHub Search Error:', error);
-            bot.sendMessage(chatId, '❌ Unable to perform GitHub search.', { parse_mode: 'HTML' });
+            console.error('GitHub Download Error:', error);
+            
+            // Detailed error handling
+            if (error.response) {
+                switch (error.response.status) {
+                    case 404:
+                        bot.sendMessage(chatId, '❌ Repository not found.');
+                        break;
+                    case 403:
+                        bot.sendMessage(chatId, '❌ GitHub API rate limit exceeded.');
+                        break;
+                    default:
+                        bot.sendMessage(chatId, '❌ An error occurred while fetching the repository.');
+                }
+            } else {
+                bot.sendMessage(chatId, '❌ Unable to download repository.');
+            }
         }
     }
 };
 
-// Function to search files on GitHub
-async function searchFiles(query) {
+// Search repositories
+async function searchRepositories(query) {
     try {
         const response = await axios.get('https://api.github.com/search/repositories', {
             params: {
                 q: query,
                 sort: 'stars',
-                order: 'desc'
+                order: 'desc',
+                per_page: 1  // Only get the top result
+            },
+            headers: {
+                'Accept': 'application/vnd.github.v3+json'
             }
         });
 
-        return response.data.items.slice(0, 10).map((repo, index) => ({
-            id: index + 1,
-            name: repo.full_name,
-            description: repo.description,
-            stars: repo.stargazers_count,
-            url: repo.clone_url
-        }));
+        return response.data.items;
     } catch (error) {
-        console.error('Error searching files:', error.message);
+        console.error('Repository Search Error:', error);
         return [];
     }
 }
 
-// Function to download repository as ZIP
-async function downloadRepository(url, repoName) {
+// Get specific repository details
+async function getSpecificRepository(username, repository) {
     try {
-        const zipUrl = `${url}/archive/refs/heads/main.zip`; // Adjust if necessary for the default branch
+        const response = await axios.get(`https://api.github.com/repos/${username}/${repository}`, {
+            headers: {
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        return response.data;
+    } catch (error) {
+        console.error('Specific Repository Error:', error);
+        throw error;
+    }
+}
+
+// Download repository as ZIP
+async function downloadRepository(fullName) {
+    try {
+        const zipUrl = `https://github.com/${fullName}/archive/refs/heads/main.zip`;
+        
         const response = await axios({
             method: 'get',
             url: zipUrl,
-            responseType: 'arraybuffer'
+            responseType: 'arraybuffer',
+            headers: {
+                'Accept': 'application/zip'
+            }
         });
 
-        const fileName = `${repoName.replace('/', '_')}.zip`;
+        // Generate unique filename
+        const fileName = `${fullName.replace('/', '_')}_${Date.now()}.zip`;
         const filePath = path.join(__dirname, fileName);
         
+        // Write ZIP file
         fs.writeFileSync(filePath, response.data);
-        console.log(`Downloaded: ${filePath}`);
+        
         return filePath;
     } catch (error) {
-        console.error('Error downloading repository:', error.message);
-        return null;
+        console.error('Repository Download Error:', error);
+        throw error;
     }
 }
 
