@@ -2,10 +2,10 @@ const axios = require('axios');
 
 module.exports = {
   name: 'itunes',
-  description: 'Quick iTunes Search with Direct Media Result',
+  description: 'iTunes Search with Media Preview',
   async execute(bot, msg, args) {
     if (args.length < 1) {
-      return bot.sendMessage(msg.chat.id, '❌ Please provide a search term. Usage: /itunessearch <term>');
+      return bot.sendMessage(msg.chat.id, '❌ Please provide a search term. Usage: /itunes <term>');
     }
 
     const query = args.join(' ');
@@ -16,7 +16,7 @@ module.exports = {
         params: { term: query }
       });
 
-      // Find most relevant result
+      // Find most relevant result (song or music video)
       const result = response.data.find(item => 
         item.wrapperType === 'track' && 
         (item.kind === 'song' || item.kind === 'music-video')
@@ -33,38 +33,42 @@ module.exports = {
 <b>Artist:</b> ${escapeHtml(result.artistName)}
 <b>Track:</b> ${escapeHtml(result.trackName)}
 <b>Album:</b> ${escapeHtml(result.collectionName)}
+<b>Type:</b> ${result.kind === 'song' ? 'Audio' : 'Music Video'}
 <b>Genre:</b> ${escapeHtml(result.primaryGenreName)}
 <b>Released:</b> ${new Date(result.releaseDate).getFullYear()}
 <b>Duration:</b> ${formatDuration(result.trackTimeMillis)}
 
-<i>Visit:</i> <a href="${result.trackViewUrl}">iTunes Link</a>
+Visit: <a href="${result.trackViewUrl}">iTunes Link</a>
       `.trim();
 
-      // Media sending options
+      // Determine media type and send accordingly
       const mediaOptions = {
         caption: caption,
         parse_mode: 'HTML',
         disable_web_page_preview: true
       };
 
-      // Send media based on type
-      if (result.kind === 'song' && result.previewUrl) {
+      // Enhanced media handling
+      if (result.previewUrl) {
         try {
-          await bot.sendAudio(chatId, result.previewUrl, mediaOptions);
-        } catch (audioError) {
-          console.error('Audio Send Error:', audioError);
-          await bot.sendMessage(chatId, '❌ Unable to send audio preview.', { parse_mode: 'HTML' });
+          switch (result.kind) {
+            case 'song':
+              await sendAudioWithRetry(bot, chatId, result.previewUrl, mediaOptions);
+              break;
+            case 'music-video':
+              await sendVideoWithRetry(bot, chatId, result.previewUrl, mediaOptions);
+              break;
+            default:
+              await bot.sendMessage(chatId, caption, { 
+                parse_mode: 'HTML',
+                disable_web_page_preview: true 
+              });
+          }
+        } catch (mediaError) {
+          console.error('Media Send Error:', mediaError);
+          await bot.sendMessage(chatId, '❌ Unable to send media preview.', { parse_mode: 'HTML' });
         }
-      } 
-      else if (result.kind === 'music-video' && result.previewUrl) {
-        try {
-          await bot.sendVideo(chatId, result.previewUrl, mediaOptions);
-        } catch (videoError) {
-          console.error('Video Send Error:', videoError);
-          await bot.sendMessage(chatId, '❌ Unable to send video preview.', { parse_mode: 'HTML' });
-        }
-      }
-      else {
+      } else {
         // Fallback if no preview available
         await bot.sendMessage(chatId, caption, { 
           parse_mode: 'HTML',
@@ -78,6 +82,46 @@ module.exports = {
     }
   }
 };
+
+// Enhanced audio sending with multiple retry mechanisms
+async function sendAudioWithRetry(bot, chatId, audioUrl, options, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await bot.sendAudio(chatId, audioUrl, options);
+      return;
+    } catch (error) {
+      console.error(`Audio Send Attempt ${attempt} Failed:`, error);
+      
+      // Different strategies for different error types
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
+
+// Enhanced video sending with multiple retry mechanisms
+async function sendVideoWithRetry(bot, chatId, videoUrl, options, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await bot.sendVideo(chatId, videoUrl, options);
+      return;
+    } catch (error) {
+      console.error(`Video Send Attempt ${attempt} Failed:`, error);
+      
+      // Different strategies for different error types
+      if (attempt === retries) {
+        throw error;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
 
 // Utility function to format duration
 function formatDuration(ms) {
