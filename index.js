@@ -1,3 +1,4 @@
+const axios = require('axios');
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const Promise = require('bluebird');
@@ -16,6 +17,7 @@ const OwnerHandler = require('./handlers/ownerHandler');
 
 const PORT = process.env.PORT || 3000;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
+const UPTIME_URL = process.env.UPTIME_URL;
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -74,12 +76,21 @@ class LuminaBot {
         });
       });
 
+      app.get('/keep-alive', (req, res) => {
+        res.status(200).json({ status: 'Bot is alive', timestamp: new Date().toISOString() });
+      });
+
       const botInfo = await this.bot.getMe();
       this.bot.botInfo = botInfo;
       console.log(`Bot initialized: @${botInfo.username}`);
       console.log(`Webhook server running on port ${PORT}`);
 
       await this.initializeComponents();
+
+      if (UPTIME_URL) {
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // 5 minutes
+        console.log('Uptime pinger initialized');
+      }
 
       console.log('All components initialized successfully');
     } catch (error) {
@@ -166,6 +177,17 @@ class LuminaBot {
     this.bot.on('error', (error) => {
       console.error('Bot Error:', error);
     });
+  }
+
+  async pingUptimeUrl() {
+    if (UPTIME_URL) {
+      try {
+        await axios.get(UPTIME_URL);
+        console.log('Pinged uptime URL successfully');
+      } catch (error) {
+        console.error('Error pinging uptime URL:', error.message);
+      }
+    }
   }
 }
 
