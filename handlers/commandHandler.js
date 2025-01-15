@@ -123,6 +123,11 @@ This will help me serve the group effectively! 🌟
       parse_mode: 'HTML'
     });
   }
+
+  loadCommands() {
+    const manageGroupsCommand = require('../commands/managegroups');
+    this.addCommand(manageGroupsCommand.name, manageGroupsCommand.execute, true);
+  }
 }
 
 module.exports = CommandHandler;
