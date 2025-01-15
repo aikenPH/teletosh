@@ -8,17 +8,18 @@ class GroupManager {
   }
 
   async handleNewMember(msg) {
-  try {
-    const chatId = msg.chat.id;
-    const newMember = msg.new_chat_member;
+    try {
+      const chatId = msg.chat.id;
+      const newMember = msg.new_chat_member;
 
-    if (newMember.id === this.bot.botInfo.id) {
-      await this.sendBotIntroduction(chatId);
-      
-      const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
-      
-      if (botOwnerId) {
-        const ownerNotificationMessage = `
+      if (newMember.id === this.bot.botInfo.id) {
+        await this.joinGroup(chatId);
+        await this.sendBotIntroduction(chatId);
+
+        const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
+
+        if (botOwnerId) {
+          const ownerNotificationMessage = `
 🌟 <b>New Group Addition Alert!</b> 🌟
 
 📍 Group Details:
@@ -30,33 +31,33 @@ class GroupManager {
 • User ID: <code>${msg.from.id}</code>
 
 📅 Added at: ${new Date().toUTCString()}
-        `;
+          `;
 
-        await this.bot.sendMessage(botOwnerId, ownerNotificationMessage, {
-          parse_mode: 'HTML',
-          disable_web_page_preview: true
-        });
+          await this.bot.sendMessage(botOwnerId, ownerNotificationMessage, {
+            parse_mode: 'HTML',
+            disable_web_page_preview: true
+          });
+        }
+
+        return;
       }
-      
-      return;
-    }
 
-    const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
-    const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
-    
-    try {
-      await this.bot.sendPhoto(chatId, welcomeImageUrl, {
-        caption: welcomeMessage,
-        parse_mode: 'HTML'
-      });
-    } catch (photoError) {
-      console.error('Error sending welcome photo:', photoError);
-      await this.bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'HTML' });
+      const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
+      const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
+
+      try {
+        await this.bot.sendPhoto(chatId, welcomeImageUrl, {
+          caption: welcomeMessage,
+          parse_mode: 'HTML'
+        });
+      } catch (photoError) {
+        console.error('Error sending welcome photo:', photoError);
+        await this.bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'HTML' });
+      }
+    } catch (error) {
+      console.error('Error in handleNewMember:', error);
     }
-  } catch (error) {
-    console.error('Error in handleNewMember:', error);
   }
-}
 
   async sendBotIntroduction(chatId) {
     const introMessage = `
@@ -95,9 +96,9 @@ Need help? Just type /help to get started!
       const chatId = msg.chat.id;
       const leftMember = msg.left_chat_member;
       const goodbyeMessage = this.generateGoodbyeMessage(leftMember.first_name);
-      
+
       const goodbyeImageUrl = 'https://i.ibb.co/kqWn2FY/goodbye.png';
-      
+
       try {
         await this.bot.sendPhoto(chatId, goodbyeImageUrl, {
           caption: goodbyeMessage,
@@ -289,6 +290,40 @@ Wishing you all the best! 🌟
       throw error;
     }
   }
+
+  async joinGroup(chatId) {
+    try {
+      const chat = await this.bot.getChat(chatId);
+      this.db.addGroup(chatId, {
+        title: chat.title,
+        type: chat.type
+      });
+      console.log(`Joined group: ${chat.title} (${chatId})`);
+    } catch (error) {
+      console.error('Error joining group:', error);
+    }
+  }
+
+  async leaveGroup(chatId) {
+    try {
+      await this.bot.leaveChat(chatId);
+      this.db.removeGroup(chatId);
+      console.log(`Left group: ${chatId}`);
+    } catch (error) {
+      console.error('Error leaving group:', error);
+    }
+  }
+
+  async checkAutoLeave() {
+    const groups = this.db.getAllGroups();
+    const now = new Date();
+    for (const group of groups) {
+      if (group.autoLeaveDate && new Date(group.autoLeaveDate) <= now) {
+        await this.leaveGroup(group.id);
+      }
+    }
+  }
 }
 
 module.exports = GroupManager;
+
