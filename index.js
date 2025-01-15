@@ -87,8 +87,10 @@ class LuminaBot {
 
       await this.initializeComponents();
 
+      this.startAutoLeaveCheck();
+
       if (UPTIME_URL) {
-        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // 5 minutes
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // Ping every 5 minutes
         console.log('Uptime pinger initialized');
       }
 
@@ -159,6 +161,16 @@ class LuminaBot {
         console.error('Error handling left member:', error);
       }
     });
+
+    this.bot.on('my_chat_member', async (chatMemberUpdated) => {
+      if (chatMemberUpdated.new_chat_member.status === 'member' && 
+          chatMemberUpdated.old_chat_member.status === 'left') {
+        await this.groupManager.joinGroup(chatMemberUpdated.chat.id);
+      } else if (chatMemberUpdated.new_chat_member.status === 'left' && 
+                 chatMemberUpdated.old_chat_member.status === 'member') {
+        await this.groupManager.leaveGroup(chatMemberUpdated.chat.id);
+      }
+    });
   }
 
   loadCommands() {
@@ -188,6 +200,10 @@ class LuminaBot {
         console.error('Error pinging uptime URL:', error.message);
       }
     }
+  }
+
+  startAutoLeaveCheck() {
+    setInterval(() => this.groupManager.checkAutoLeave(), 60 * 60 * 1000); // Check every hour
   }
 }
 

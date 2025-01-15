@@ -15,7 +15,8 @@ class Database {
       return { 
         reminders: [], 
         users: {},
-        chats: {}
+        chats: {},
+        groups: {}
       };
     }
   }
@@ -58,7 +59,8 @@ class Database {
       this.data = {
         reminders: [],
         users: {},
-        chats: {}
+        chats: {},
+        groups: {}
       };
       this.saveData();
       console.log('Database cache cleared successfully');
@@ -110,6 +112,30 @@ class Database {
   getAllChats() {
     return this.data.chats ? Object.values(this.data.chats) : [];
   } 
+
+  addGroup(groupId, groupData) {
+    if (!this.data.groups) {
+      this.data.groups = {};
+    }
+    this.data.groups[groupId] = {
+      id: groupId,
+      ...groupData,
+      joinedAt: new Date().toISOString()
+    };
+    this.saveData();
+  }
+
+  removeGroup(groupId) {
+    if (this.data.groups && this.data.groups[groupId]) {
+      delete this.data.groups[groupId];
+      this.saveData();
+    }
+  }
+
+  getAllGroups() {
+    return this.data.groups ? Object.values(this.data.groups) : [];
+  }
 }
 
 module.exports = Database;
+
