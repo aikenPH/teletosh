@@ -4,15 +4,10 @@ const { promisify } = require('util');
 module.exports = {
   name: 'clearcache',
   description: 'Clear bot cache and storage usage',
+  owner: true,
   
   async execute(bot, msg, args, db) {
     try {
-      const botOwnerId = process.env.OWNER_ID ? parseInt(process.env.OWNER_ID) : null;
-      if (!botOwnerId || msg.from.id !== botOwnerId) {
-        await bot.sendMessage(msg.chat.id, '❌ This command is restricted to the bot creator only.');
-        return;
-      }
-
       const statusMessage = await bot.sendMessage(msg.chat.id, '🔄 Initiating cache cleanup...');
 
       const initialStats = {
@@ -60,7 +55,7 @@ module.exports = {
         console.error('Module cache cleanup error:', moduleError);
       }
 
-       await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500));
       const finalStats = {
         memory: process.memoryUsage(),
         systemFreeMem: os.freemem()
@@ -118,3 +113,4 @@ module.exports = {
     }
   }
 };
+
