@@ -87,8 +87,10 @@ class LuminaBot {
 
       await this.initializeComponents();
 
+      this.startAutoLeaveCheck();
+
       if (UPTIME_URL) {
-        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // 5 minutes
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // every 5 minutes
         console.log('Uptime pinger initialized');
       }
 
@@ -188,6 +190,10 @@ class LuminaBot {
         console.error('Error pinging uptime URL:', error.message);
       }
     }
+  }
+
+  startAutoLeaveCheck() {
+    setInterval(() => this.groupManager.checkAutoLeave(), 60 * 60 * 1000); // Check every hour
   }
 }
 
