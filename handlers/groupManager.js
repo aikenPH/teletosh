@@ -31,16 +31,16 @@ class GroupManager {
 • User ID: <code>${msg.from.id}</code>
 
 📅 Added at: ${new Date().toUTCString()}
-          `;
+        `;
 
-          await this.bot.sendMessage(botOwnerId, ownerNotificationMessage, {
-            parse_mode: 'HTML',
-            disable_web_page_preview: true
-          });
-        }
-
-        return;
+        await this.bot.sendMessage(botOwnerId, ownerNotificationMessage, {
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        });
       }
+
+      return;
+    }
 
       const welcomeMessage = this.generateWelcomeMessage(newMember.first_name);
       const welcomeImageUrl = 'https://i.ibb.co/hRmZ4NR/welcome.png';
@@ -294,7 +294,7 @@ Wishing you all the best! 🌟
   async joinGroup(chatId) {
     try {
       const chat = await this.bot.getChat(chatId);
-      this.db.addGroup(chatId, {
+      await this.db.addGroup(chatId, {
         title: chat.title,
         type: chat.type
       });
