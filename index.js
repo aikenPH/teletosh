@@ -90,7 +90,7 @@ class LuminaBot {
       this.startAutoLeaveCheck();
 
       if (UPTIME_URL) {
-        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // every 5 minutes
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // Ping every 5 minutes
         console.log('Uptime pinger initialized');
       }
 
@@ -159,6 +159,16 @@ class LuminaBot {
         await this.groupManager.handleLeftMember(msg);
       } catch (error) {
         console.error('Error handling left member:', error);
+      }
+    });
+
+    this.bot.on('my_chat_member', async (chatMemberUpdated) => {
+      if (chatMemberUpdated.new_chat_member.status === 'member' && 
+          chatMemberUpdated.old_chat_member.status === 'left') {
+        await this.groupManager.joinGroup(chatMemberUpdated.chat.id);
+      } else if (chatMemberUpdated.new_chat_member.status === 'left' && 
+                 chatMemberUpdated.old_chat_member.status === 'member') {
+        await this.groupManager.leaveGroup(chatMemberUpdated.chat.id);
       }
     });
   }
