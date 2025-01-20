@@ -1,7 +1,6 @@
 const QRCode = require('qrcode');
 const sharp = require('sharp');
-const axios = require('axios');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 
 class AdvancedQRCodeGenerator {
@@ -9,60 +8,64 @@ class AdvancedQRCodeGenerator {
     this.defaultOptions = {
       width: 512,
       height: 512,
-      margin: 2,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
-      errorCorrectionLevel: 'H'
+      margin: 4,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
     };
   }
 
-  // Generate basic QR code
-  async generateBasicQRCode(data, options = {}) {
-    const mergedOptions = { ...this.defaultOptions, ...options };
+  // Validate input (URL or text)
+  validateInput(input) {
+    if (!input) return false;
     
+    // Comprehensive URL and text validation
+    const urlRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+    const textRegex = /^.{1,500}$/;
+
+    return urlRegex.test(input) || textRegex.test(input);
+  }
+
+  // Generate QR Code Buffer
+  async generateQRCodeBuffer(data, options = {}) {
     try {
-      return await QRCode.toBuffer({
-        data,
-        width: mergedOptions.width,
-        margin: mergedOptions.margin,
-        color: {
-          dark: mergedOptions.colorDark,
-          light: mergedOptions.colorLight
-        },
-        errorCorrectionLevel: mergedOptions.errorCorrectionLevel
-      });
+      const mergedOptions = { 
+        ...this.defaultOptions, 
+        ...options,
+        data: data
+      };
+
+      // Generate QR Code
+      const qrBuffer = await QRCode.toBuffer(mergedOptions);
+
+      // Enhanced Styling
+      const styledQRBuffer = await this.enhanceQRCodeStyle(qrBuffer);
+
+      return styledQRBuffer;
     } catch (error) {
-      console.error('QR Code generation error:', error);
-      throw error;
+      console.error('QR Code Generation Error:', error);
+      throw new Error('Failed to generate QR Code');
     }
   }
 
-  // Create advanced styled QR code
-  async createStyledQRCode(data, options = {}) {
+  // Enhance QR Code Style
+  async enhanceQRCodeStyle(qrBuffer) {
     try {
-      // Generate base QR code
-      const qrBuffer = await this.generateBasicQRCode(data, options);
-
-      // Create a stylish background
-      const background = await sharp({
-        create: {
-          width: this.defaultOptions.width,
-          height: this.defaultOptions.height,
-          channels: 4,
+      const styledQR = await sharp(qrBuffer)
+        .extend({
+          top: 50,
+          bottom: 50,
+          left: 50,
+          right: 50,
           background: { r: 240, g: 240, b: 240, alpha: 1 }
-        }
-      })
-      .png()
-      .toBuffer();
-
-      // Overlay QR code on background with shadow and rounded corners
-      const styledQR = await sharp(background)
+        })
         .composite([
           {
             input: qrBuffer,
-            top: 64,
-            left: 64,
-            blend: 'over'
+            top: 50,
+            left: 50
           }
         ])
         .shadow({
@@ -71,26 +74,25 @@ class AdvancedQRCodeGenerator {
           left: 5,
           color: 'rgba(0,0,0,0.2)'
         })
-        .roundCorners({
-          radius: 20
-        })
         .png()
         .toBuffer();
 
       return styledQR;
     } catch (error) {
-      console.error('Styled QR Code generation error:', error);
-      throw error;
+      console.error('QR Code Styling Error:', error);
+      return qrBuffer; // Fallback to original if styling fails
     }
   }
 
-  // Generate QR code with logo
+  // Generate QR Code with Logo
   async generateQRCodeWithLogo(data, logoPath, options = {}) {
     try {
-      // Generate base QR code
-      const qrBuffer = await this.generateBasicQRCode(data, options);
+      // Validate logo
+      await fs.access(logoPath);
 
-      // Resize and process logo
+      const qrBuffer = await this.generateQRCodeBuffer(data, options);
+
+      // Process logo
       const logo = await sharp(logoPath)
         .resize(100, 100, {
           fit: sharp.fit.inside,
@@ -98,7 +100,7 @@ class AdvancedQRCodeGenerator {
         })
         .toBuffer();
 
-      // Overlay logo on QR code
+      // Overlay logo
       const qrWithLogo = await sharp(qrBuffer)
         .composite([
           {
@@ -112,22 +114,9 @@ class AdvancedQRCodeGenerator {
 
       return qrWithLogo;
     } catch (error) {
-      console.error('QR Code with logo generation error:', error);
-      throw error;
+      console.error('QR Code with Logo Error:', error);
+      throw new Error('Failed to generate QR Code with Logo');
     }
-  }
-
-  // Validate URL or text
-  validateInput(input) {
-    // URL validation
-    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-    
-    // Check if input is a valid URL or non-empty text
-    if (urlRegex.test(input) || (input && input.trim().length > 0)) {
-      return true;
-    }
-    
-    return false;
   }
 }
 
@@ -139,7 +128,7 @@ module.exports = {
     const chatId = msg.chat.id;
     const qrGenerator = new AdvancedQRCodeGenerator();
 
-    // Check if input is provided
+    // Input validation
     if (args.length === 0) {
       return bot.sendMessage(chatId, '❌ Please provide a URL or text to generate QR code.');
     }
@@ -148,51 +137,52 @@ module.exports = {
 
     // Validate input
     if (!qrGenerator.validateInput(input)) {
-      return bot.sendMessage(chatId, '❌ Invalid input. Please provide a valid URL or non-empty text.');
+      return bot.sendMessage(chatId, '❌ Invalid input. Please provide a valid URL or text (1-500 characters).');
     }
 
     try {
-      // Generate styled QR code
-      const qrCodeBuffer = await qrGenerator.createStyledQRCode(input);
+      // Generate QR code
+      const qrCodeBuffer = await qrGenerator.generateQRCodeBuffer(input);
 
-      // Send QR code as photo
+      // Send QR code
       await bot.sendPhoto(chatId, qrCodeBuffer, {
-        caption: `QR Code for: ${input}`
+        caption: `QR Code for: ${input.length > 50 ? input.substring(0, 50) + '...' : input}`
       });
     } catch (error) {
-      console.error('QR Code generation error:', error);
+      console.error('QR Code Generation Error:', error);
       await bot.sendMessage(chatId, '❌ Failed to generate QR code. Please try again.');
     }
   },
 
-  // Additional methods for advanced usage
-  generators: {
-    withLogo: async (bot, msg, args, logoPath) => {
-      const chatId = msg.chat.id;
-      const qrGenerator = new AdvancedQRCodeGenerator();
+  // Advanced QR Code Generation with Logo
+  async generateWithLogo(bot, msg, args) {
+    const chatId = msg.chat.id;
+    const qrGenerator = new AdvancedQRCodeGenerator();
 
-      if (args.length === 0) {
-        return bot.sendMessage(chatId, '❌ Please provide a URL or text to generate QR code.');
-      }
+    // Check for input and logo
+    if (args.length < 2) {
+      return bot.sendMessage(chatId, '❌ Please provide text and logo path.');
+    }
 
-      const input = args.join(' ');
+    const logoPath = args.pop(); // Last argument is logo path
+    const input = args.join(' ');
 
-      if (!qrGenerator.validateInput(input)) {
-        return bot.sendMessage(chatId, '❌ Invalid input. Please provide a valid URL or non-empty text.');
-      }
+    // Validate input and logo
+    if (!qrGenerator.validateInput(input)) {
+      return bot.sendMessage(chatId, '❌ Invalid input. Please provide a valid URL or text.');
+    }
 
-      try {
-        // Generate QR code with logo
-        const qrCodeBuffer = await qrGenerator.generateQRCodeWithLogo(input, logoPath);
+    try {
+      // Generate QR code with logo
+      const qrCodeBuffer = await qrGenerator.generateQRCodeWithLogo(input, logoPath);
 
-        // Send QR code as photo
-        await bot.sendPhoto(chatId, qrCodeBuffer, {
-          caption: `QR Code with logo for: ${input}`
-        });
-      } catch (error) {
-        console.error('QR Code with logo generation error:', error);
-        await bot.sendMessage(chatId, '❌ Failed to generate QR code with logo. Please try again.');
-      }
+      // Send QR code
+      await bot.sendPhoto(chatId, qrCodeBuffer, {
+        caption: `QR Code with Logo for: ${input.length > 50 ? input.substring(0, 50) + '...' : input}`
+      });
+    } catch (error) {
+      console.error('QR Code with Logo Error:', error);
+      await bot.sendMessage(chatId, '❌ Failed to generate QR code with logo. Check logo path.');
     }
   }
 };
