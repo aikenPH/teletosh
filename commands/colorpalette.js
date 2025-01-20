@@ -167,7 +167,7 @@ Example: \`/colorpalette #FF5733\` or \`/colorpalette red\`
       return bot.sendMessage(chatId, usageMessage, { parse_mode: 'Markdown' });
     }
 
-    await bot.sendChatAction(chatId, 'generating');
+    await bot.sendChatAction(chatId, 'typing');
 
     if (args.length > 2) {
       const errorMessage = generator.getLuminaErrorMessage('tooManyArguments');
