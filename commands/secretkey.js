@@ -121,6 +121,7 @@ module.exports = {
 🔐 Secret Key Generator 🔐
 
 ✅ Generated Key: <code>${key}</code>
+
 🔒 Hashed Key: <code>${hashedKey}</code>
 
 🛡️ Key Strength:
