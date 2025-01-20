@@ -92,7 +92,7 @@ module.exports = {
       const passwords = [];
       for (let i = 0; i < 6; i++) {
         const password = passwordGenerator.generatePassword(baseWord, passwordLength);
-        passwords.push(`<code>${i + 1}: ${password}</code>`);
+        passwords.push(`${i + 1}:<code> ${password}</code>`);
       }
 
       const responseMessage = `
