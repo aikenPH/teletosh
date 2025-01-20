@@ -143,15 +143,11 @@ module.exports = {
 
 Generate beautiful color palettes with these commands:
 
-1️⃣ *Random Palette*
-Command: \`/colorpalette\`
-Description: Generates a random color palette
-
-2️⃣ *Based on Color*
+1️⃣ *Based on Color*
 Command: \`/colorpalette <color>\`
 Example: \`/colorpalette #FF5733\` or \`/colorpalette red\`
 
-3️⃣ *Special Palettes*
+2️⃣ *Special Palettes*
 • \`/colorpalette complementary <color>\`
 • \`/colorpalette analogous <color>\`
 • \`/colorpalette triadic <color>\`
