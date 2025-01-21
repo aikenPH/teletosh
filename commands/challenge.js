@@ -183,8 +183,6 @@ ${challenge.languages ?
 🆔 Challenge ID: <code>${challenge.id}</code>
 
 💡 Tip: Break down the problem into smaller steps and test your solution with various inputs!
-
-Type /help to see all available commands and options.
     `;
   }
 
