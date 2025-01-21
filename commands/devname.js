@@ -83,6 +83,91 @@ const leetReplacements = {
 class DevNameGenerator {
   constructor() {
     this.styles = ['classic', 'leet', 'minimalist', 'tech'];
+    this.variationsCount = 6;
+  }
+
+  generateClassicVariations(name) {
+    const variations = [];
+    for (let i = 0; i < this.variationsCount; i++) {
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+      variations.push(`${prefix}${name.toLowerCase()}${suffix}`);
+    }
+    return variations;
+  }
+
+  generateLeetVariations(name) {
+    const variations = [];
+    for (let i = 0; i < this.variationsCount; i++) {
+      let leetName = name.toLowerCase();
+      Object.entries(leetReplacements).forEach(([letter, number]) => {
+        if (Math.random() > 0.5) {
+          leetName = leetName.replace(new RegExp(letter, 'g'), number);
+        }
+      });
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const randomNum = Math.floor(Math.random() * 999);
+      variations.push(`${prefix}_${leetName}_${randomNum}`);
+    }
+    return variations;
+  }
+
+  generateMinimalistVariations(name) {
+    const variations = [];
+    const vowels = ['a', 'e', 'i', 'o', 'u'];
+    let minName = name.toLowerCase();
+    
+    variations.push(`_${minName}_`);
+    variations.push(`-${minName}-`);
+    variations.push(`.${minName}.`);
+    
+    let noVowels = minName;
+    vowels.forEach(vowel => {
+      noVowels = noVowels.replace(new RegExp(vowel, 'g'), '');
+    });
+    variations.push(`_${noVowels}_`);
+    variations.push(`-${noVowels}-`);
+    variations.push(`.${noVowels}.`);
+    
+    return variations;
+  }
+
+  generateTechVariations(name) {
+    const variations = [];
+    const availableTechTerms = [...techTerms];
+    
+    for (let i = 0; i < this.variationsCount; i++) {
+      const randomIndex = Math.floor(Math.random() * availableTechTerms.length);
+      const techTerm = availableTechTerms[randomIndex];
+      
+      if (i % 2 === 0) {
+        variations.push(`${techTerm}.${name.toLowerCase()}.dev`);
+      } else {
+        variations.push(`${name.toLowerCase()}.${techTerm}.io`);
+      }
+    }
+    return variations;
+  }
+
+  generateMultipleNames(name) {
+    const names = [];
+    this.styles.forEach(style => {
+      switch(style) {
+        case 'classic':
+          names.push({ style: 'Classic', name: this.generateClassicStyle(name) });
+          break;
+        case 'leet':
+          names.push({ style: 'Leet', name: this.generateLeetStyle(name) });
+          break;
+        case 'minimalist':
+          names.push({ style: 'Minimalist', name: this.generateMinimalistStyle(name) });
+          break;
+        case 'tech':
+          names.push({ style: 'Tech', name: this.generateTechStyle(name) });
+          break;
+      }
+    });
+    return names;
   }
 
   generateClassicStyle(name) {
@@ -114,27 +199,6 @@ class DevNameGenerator {
     return `${techTerm}.${name.toLowerCase()}.dev`;
   }
 
-  generateMultipleNames(name, count = 5) {
-    const names = [];
-    this.styles.forEach(style => {
-      switch(style) {
-        case 'classic':
-          names.push({ style: 'Classic', name: this.generateClassicStyle(name) });
-          break;
-        case 'leet':
-          names.push({ style: 'Leet', name: this.generateLeetStyle(name) });
-          break;
-        case 'minimalist':
-          names.push({ style: 'Minimalist', name: this.generateMinimalistStyle(name) });
-          break;
-        case 'tech':
-          names.push({ style: 'Tech', name: this.generateTechStyle(name) });
-          break;
-      }
-    });
-    return names;
-  }
-
   validateName(name) {
     return /^[a-zA-Z]{2,20}$/.test(name);
   }
@@ -162,15 +226,17 @@ Generates multiple username variations in different styles
 2️⃣ *Style-Specific Generation*
 Command: \`/devname <your_name> <style>\`
 Available styles:
-• classic: \`/devname john classic\`
-• leet: \`/devname john leet\`
-• minimalist: \`/devname john minimalist\`
-• tech: \`/devname john tech\`
+• classic: \`/devname john classic\` - Cool combinations with prefixes and suffixes
+• leet: \`/devname john leet\` - L33t 5p34k variations
+• minimalist: \`/devname john minimalist\` - Clean and simple versions
+• tech: \`/devname john tech\` - Tech-inspired domain-style names
 
 *Rules:*
 • Name should be 2-20 characters long
 • Only letters allowed (A-Z, a-z)
 • No spaces or special characters
+
+Each style-specific generation creates 6 unique variations! 🎨
 
 *Pro tip:* Try different styles to find your perfect dev username! 🚀
 `;
@@ -198,22 +264,24 @@ Available styles:
       }
 
       if (style) {
-        let generatedName;
+        let variations;
         switch(style) {
           case 'classic':
-            generatedName = generator.generateClassicStyle(name);
+            variations = generator.generateClassicVariations(name);
             break;
           case 'leet':
-            generatedName = generator.generateLeetStyle(name);
+            variations = generator.generateLeetVariations(name);
             break;
           case 'minimalist':
-            generatedName = generator.generateMinimalistStyle(name);
+            variations = generator.generateMinimalistVariations(name);
             break;
           case 'tech':
-            generatedName = generator.generateTechStyle(name);
+            variations = generator.generateTechVariations(name);
             break;
         }
-        response = `🎯 Your *${style}* developer username:\n\`${generatedName}\``;
+        response = `🎯 Your *${style}* developer usernames:\n\n` + variations.map(
+          (name, index) => `${index + 1}. \`${name}\``
+        ).join('\n');
       } else {
         const names = generator.generateMultipleNames(name);
         response = '🎨 *Your Developer Usernames:*\n\n' + names.map(
