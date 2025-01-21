@@ -101,105 +101,146 @@ class ChallengeGenerator {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Background gradient (black theme)
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, '#111827'); // from-gray-900
-  gradient.addColorStop(1, '#1f2937'); // to-gray-800
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+  // Dynamic Badge Rendering Method
+  const drawDynamicBadge = (text, x, y) => {
+    // Set font for measurement
+    ctx.font = '600 14px Inter';
+    
+    // Measure text width
+    const textMetrics = ctx.measureText(text);
+    const textWidth = textMetrics.width;
+    
+    // Define padding and styling
+    const horizontalPadding = 20;
+    const verticalPadding = 10;
+    const minWidth = 100;
+    const cornerRadius = 15;
+    
+    // Calculate badge dimensions
+    const badgeWidth = Math.max(textWidth + (2 * horizontalPadding), minWidth);
+    const badgeHeight = 30;
+    
+    // Difficulty badge colors with more vibrant gradient
+    const difficultyColors = {
+      'Beginner': {
+        start: '#4ade80',     // green-400
+        end: '#22c55e'         // green-500
+      },
+      'Intermediate': {
+        start: '#facc15',     // yellow-400
+        end: '#eab308'         // yellow-500
+      },
+      'Advanced': {
+        start: '#f87171',     // red-400
+        end: '#ef4444'         // red-500
+      },
+      'default': {
+        start: '#9ca3af',     // gray-400
+        end: '#6b7280'         // gray-500
+      }
+    };
 
-  // Background Pattern (grid of dots)
-  ctx.save();
-  ctx.globalAlpha = 0.1; // opacity-10
-  const cols = 12;
-  const rows = 4;
-  const dotSize = 8;
-  const gapX = width / cols;
-  const gapY = height / rows;
-  
-  for (let i = 0; i < cols; i++) {
-    for (let j = 0; j < rows; j++) {
-      ctx.beginPath();
-      ctx.arc(gapX * i + gapX/2, gapY * j + gapY/2, dotSize/2, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-    }
-  }
-  ctx.restore();
+    // Select badge color gradient
+    const colorSet = difficultyColors[challenge.difficulty] || difficultyColors.default;
+    const gradient = ctx.createLinearGradient(x, y, x + badgeWidth, y + badgeHeight);
+    gradient.addColorStop(0, colorSet.start);
+    gradient.addColorStop(1, colorSet.end);
 
-  // Difficulty badge colors
-  const difficultyColors = {
-    'Beginner': '#22c55e',    // bg-green-500
-    'Intermediate': '#eab308', // bg-yellow-500
-    'Advanced': '#ef4444',     // bg-red-500
-    'default': '#6b7280'       // bg-gray-500
+    // Draw rounded rectangle badge with gradient
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.roundRect(x, y, badgeWidth, badgeHeight, cornerRadius);
+    ctx.fill();
+
+    // Draw difficulty text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '600 14px Inter';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + (badgeWidth / 2), y + (badgeHeight / 2));
+
+    return { width: badgeWidth, height: badgeHeight };
   };
 
-  // Draw difficulty badge
-  const badgeColor = difficultyColors[challenge.difficulty] || difficultyColors.default;
-  ctx.fillStyle = badgeColor;
-  ctx.beginPath();
-  ctx.roundRect(40, 40, 100, 30, 15);
-  ctx.fill();
+  // Background Gradient
+  const backgroundGradient = ctx.createLinearGradient(0, 0, width, height);
+  backgroundGradient.addColorStop(0, '#111827');   // dark blue-gray
+  backgroundGradient.addColorStop(1, '#1f2937');   // slightly lighter
+  ctx.fillStyle = backgroundGradient;
+  ctx.fillRect(0, 0, width, height);
 
-  // Difficulty text
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '600 14px Inter';
-  ctx.textAlign = 'center';
-  ctx.fillText(challenge.difficulty, 90, 60);
+  // Subtle Dot Background Pattern
+  ctx.save();
+  ctx.globalAlpha = 0.05;
+  const dotGrid = (cols, rows, size) => {
+    const gapX = width / cols;
+    const gapY = height / rows;
+    
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        ctx.beginPath();
+        ctx.arc(gapX * i + gapX/2, gapY * j + gapY/2, size/2, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+    }
+  };
+  dotGrid(20, 10, 6);
+  ctx.restore();
 
-  // Category
+  // Dynamic Badge Rendering
+  const badge = drawDynamicBadge(challenge.difficulty, 40, 40);
+
+  // Category Text (Positioned after badge)
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#9ca3af'; // text-gray-400
+  ctx.fillStyle = '#9ca3af';
   ctx.font = '14px Inter';
-  ctx.fillText(challenge.category.toUpperCase(), 160, 60);
+  ctx.fillText(
+    challenge.category.toUpperCase(), 
+    40 + badge.width + 10, 
+    60
+  );
 
-  // Title (Centered and Larger)
+  // Title (Centered, Dynamic Sizing)
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 50px Inter'; // Increased font size
-  ctx.textAlign = 'center'; // Center align
-  const titleLines = this.wrapText(ctx, challenge.title, width - 160, 48);
-  let titleY = height / 2 - (titleLines.length * 54 / 2); // Vertically center
+  const titleFontSize = challenge.title.length > 30 ? 36 : 48;
+  ctx.font = `bold ${titleFontSize}px Inter`;
+  ctx.textAlign = 'center';
+  
+  const titleLines = this.wrapText(ctx, challenge.title, width - 160, titleFontSize);
+  let titleY = height / 2 - (titleLines.length * (titleFontSize + 10) / 2);
+  
   titleLines.forEach(line => {
     ctx.fillText(line, width / 2, titleY);
-    titleY += 54;
+    titleY += titleFontSize + 10;
   });
 
-  // Description (Centered and Slightly Larger)
-  ctx.fillStyle = '#d1d5db'; // text-gray-300
-  ctx.font = '25px Inter'; // Increased font size
-  ctx.textAlign = 'center'; // Center align
-  const descLines = this.wrapText(ctx, challenge.description, width - 160, 24);
+  // Description (Centered, Responsive)
+  ctx.fillStyle = '#d1d5db';
+  const descFontSize = 22;
+  ctx.font = `${descFontSize}px Inter`;
+  ctx.textAlign = 'center';
+  
+  const descLines = this.wrapText(ctx, challenge.description, width - 160, descFontSize);
   let descY = titleY + 40;
-  // Only show first two lines (line-clamp-2)
+  
   descLines.slice(0, 2).forEach(line => {
     ctx.fillText(line, width / 2, descY);
-    descY += 30;
+    descY += descFontSize + 8;
   });
 
-  // Footer circle with icon
-  ctx.fillStyle = '#3b82f6'; // bg-blue-500
-  ctx.beginPath();
-  ctx.arc(40 + 16, height - 40, 16, 0, Math.PI * 2);
-  ctx.fill();
+  // Footer Elements (Simplified)
+  const footerElements = [
+    { icon: '✦', text: 'Challenge', align: 'left', x: 40, color: '#9ca3af' },
+    { text: 'Generated by Lumina', align: 'right', x: width - 40, color: '#6b7280' }
+  ];
 
-  // Target emoji
-  ctx.font = '16px serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('✦', 40 + 16, height - 34);
-
-  // Challenge text
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#9ca3af'; // text-gray-400
-  ctx.font = '16px Inter';
-  ctx.fillText('Challenge', 40 + 40, height - 34);
-
-  // Lumina credits
-  ctx.fillStyle = '#6b7280'; // text-gray-500
-  ctx.font = '16px Inter';
-  ctx.textAlign = 'right';
-  ctx.fillText('Generated by Lumina', width - 40, height - 34);
+  footerElements.forEach(element => {
+    ctx.fillStyle = element.color;
+    ctx.font = '12px Inter';
+    ctx.textAlign = element.align;
+    ctx.fillText(element.text, element.x, height - 34);
+  });
 
   return canvas.toBuffer('image/png');
 }
