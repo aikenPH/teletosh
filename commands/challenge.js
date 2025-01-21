@@ -204,7 +204,7 @@ ctx.fillStyle = '#3b82f6';
   ctx.arc(40 + 16, height - 40, 16, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.font = '16px serif';
+  ctx.font = '12px serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffffff';
   ctx.fillText('✦', 40 + 16, height - 34);
