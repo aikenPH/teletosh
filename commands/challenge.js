@@ -144,14 +144,14 @@ class ChallengeGenerator {
 
   // Difficulty text
   ctx.fillStyle = '#ffffff';
-  ctx.font = '600 16px Inter';
+  ctx.font = '600 14px Inter';
   ctx.textAlign = 'center';
   ctx.fillText(challenge.difficulty, 90, 60);
 
   // Category
   ctx.textAlign = 'left';
   ctx.fillStyle = '#9ca3af'; // text-gray-400
-  ctx.font = '16px Inter';
+  ctx.font = '14px Inter';
   ctx.fillText(challenge.category.toUpperCase(), 160, 60);
 
   // Title (Centered and Larger)
