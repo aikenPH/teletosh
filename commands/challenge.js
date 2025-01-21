@@ -207,7 +207,7 @@ ctx.fillStyle = '#3b82f6';
   ctx.font = '17px serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('✦', 40 + 16, height - 30);
+  ctx.fillText('✦', 40 + 16, height - 36);
 
 
   ctx.textAlign = 'left';
