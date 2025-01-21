@@ -200,11 +200,11 @@ class ChallengeGenerator {
   });
 
 ctx.fillStyle = '#3b82f6';
-ctx.beginPath();
-ctx.arc(width / 2, height - 40, 10, 0, Math.PI * 2);
-ctx.fill();
+  ctx.beginPath();
+  ctx.arc(40 + 16, height - 40, 16, 0, Math.PI * 2);
+  ctx.fill();
 
-ctx.font = '12px serif';
+  ctx.font = '16px serif';
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
 ctx.fillStyle = '#ffffff';
