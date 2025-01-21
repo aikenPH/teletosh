@@ -205,10 +205,9 @@ ctx.fillStyle = '#3b82f6';
   ctx.fill();
 
   ctx.font = '16px serif';
-ctx.textAlign = 'center';
-ctx.textBaseline = 'middle';
-ctx.fillStyle = '#ffffff';
-ctx.fillText('✦', width / 2, height - 40);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('✦', width / 2, height - 40);
 
   ctx.textAlign = 'left';
   ctx.fillStyle = '#9ca3af';
