@@ -19,16 +19,9 @@ class ChallengeGenerator {
           timeLimit: "20 minutes"
         },
         {
-          title: "String Reversal",
-          difficulty: "Beginner",
-          description: "Write a function that reverses a string without using built-in reverse methods.",
-          languages: ["Python", "JavaScript", "Java"],
-          timeLimit: "25 minutes"
-        },
-        {
           title: "Palindrome Checker",
           difficulty: "Intermediate",
-          description: "Create a function that checks if a given string is a palindrome, ignoring spaces and punctuation.",
+          description: "Create a function that checks if a given string is a palindrome.",
           languages: ["JavaScript", "Python", "Java"],
           timeLimit: "30 minutes"
         },
@@ -42,7 +35,7 @@ class ChallengeGenerator {
         {
           title: "Binary Tree Implementation",
           difficulty: "Advanced",
-          description: "Implement a complete binary tree with insertion, deletion, and all three traversal methods.",
+          description: "Implement a complete binary tree with insertion, deletion, and traversal.",
           languages: ["Java", "C++", "Python"],
           timeLimit: "90 minutes"
         }
@@ -101,28 +94,27 @@ class ChallengeGenerator {
 
   getUsageInstructions() {
     return `
-📚 Challenge Guide 📚
+📚 <b>Challenge Guide</b> 📚
 
-1️⃣  Category-Specific Challenge:
+1️⃣ <b>Category-Specific Challenge:</b>
    /challenge [category]
-   • Example: /challenge coding
-   • Example: /challenge algorithm
-   • Example: /challenge design
+   • Example: <code>/challenge coding</code>
+   • Example: <code>/challenge algorithm</code>
+   • Example: <code>/challenge design</code>
 
-2️⃣ Difficulty-Specific Challenge:
+2️⃣ <b>Difficulty-Specific Challenge:</b>
    /challenge [difficulty]
-   • Example: /challenge Beginner
-   • Example: /challenge Intermediate
-   • Example: /challenge Advanced
+   • Example: <code>/challenge Beginner</code>
+   • Example: <code>/challenge Intermediate</code>
+   • Example: <code>/challenge Advanced</code>
 
-3️⃣ Category and Difficulty:
+3️⃣ <b>Category and Difficulty:</b>
    /challenge [category] [difficulty]
-   • Example: /challenge coding Beginner
-   • Example: /challenge algorithm Advanced
+   • Example: <code>/challenge coding Beginner</code>
+   • Example: <code>/challenge algorithm Advanced</code>
 
-Available Categories: ${this.categories.join(', ')}
-Difficulty Levels: ${this.difficultyLevels.join(', ')}
-    `;
+<b>Available Categories:</b> ${this.categories.join(', ')}
+Difficulty Levels: ${this.difficultyLevels.join(', ')}`;
   }
 
   generateChallenge(category = null, difficulty = null) {
@@ -165,9 +157,9 @@ Difficulty Levels: ${this.difficultyLevels.join(', ')}
 
   formatChallengeMessage(challenge) {
     return `
-🎯 NEW CHALLENGE GENERATED!
+🎯 CHALLENGE
 
-🌟 Challenge: ${challenge.title}
+🌟 Title: ${challenge.title}
 🏷️ Category: ${challenge.category.toUpperCase()}
 📊 Difficulty: ${challenge.difficulty}
 
@@ -178,36 +170,61 @@ ${challenge.description}
 
 ${challenge.languages ? 
   `💻 Recommended Languages: ${challenge.languages.join(', ')}` : 
-  `🎨 Required Skills: ${challenge.skills?.join(', ') || challenge.tools?.join(', ')}`}
+  `🎨 Required Skills: ${challenge.skills?.join(', ')}`}
 
 🆔 Challenge ID: <code>${challenge.id}</code>
 
-💡 Tip: Break down the problem into smaller steps and test your solution with various inputs!
-    `;
-  }
-
-  generateMultipleChallenges(count = 3, difficulty = null) {
-    try {
-      if (count > this.categories.length) {
-        throw new Error(`Can only generate up to ${this.categories.length} different challenges at once!`);
-      }
-
-      const challenges = [];
-      const usedCategories = new Set();
-
-      while (challenges.length < count) {
-        const challenge = this.generateChallenge(null, difficulty);
-        
-        if (!usedCategories.has(challenge.category)) {
-          challenges.push(challenge);
-          usedCategories.add(challenge.category);
-        }
-      }
-
-      return challenges;
-    } catch (error) {
-      throw error;
-    }
+💡 Tip: Break down the problem into smaller steps and test your solution thoroughly!`;
   }
 }
 
+module.exports = {
+  name: 'challenge',
+  description: 'Generate coding, algorithm, and design challenges',
+  
+  async execute(bot, msg, args) {
+    const chatId = msg.chat.id;
+    const challengeGenerator = new ChallengeGenerator();
+
+    try {
+      await bot.sendChatAction(chatId, 'typing');
+
+      if (args.length === 0) {
+        await bot.sendMessage(chatId, challengeGenerator.getUsageInstructions(), {
+          parse_mode: 'HTML'
+        });
+        return;
+      }
+
+      let category = null;
+      let difficulty = null;
+
+      if (args.length > 0) {
+        if (challengeGenerator.difficultyLevels.includes(args[0])) {
+          difficulty = args[0];
+          if (args[1]) category = args[1].toLowerCase();
+        } else {
+          category = args[0].toLowerCase();
+          if (args[1] && challengeGenerator.difficultyLevels.includes(args[1])) {
+            difficulty = args[1];
+          }
+        }
+      }
+
+      const challenge = challengeGenerator.generateChallenge(category, difficulty);
+      const challengeMessage = challengeGenerator.formatChallengeMessage(challenge);
+
+      await bot.sendMessage(chatId, challengeMessage, {
+        parse_mode: 'HTML'
+      });
+
+    } catch (error) {
+      console.error('Challenge Generation Error:', error);
+      const errorMessage = `⚠️ Error: ${error.message}\n\n${challengeGenerator.getUsageInstructions()}`;
+      
+      await bot.sendMessage(chatId, errorMessage, {
+        parse_mode: 'HTML'
+      });
+    }
+  }
+};
