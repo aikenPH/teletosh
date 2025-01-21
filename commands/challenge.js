@@ -3,172 +3,137 @@ const crypto = require('crypto');
 class ChallengeGenerator {
   constructor() {
     this.challenges = {
-      beginner: {
-        coding: [
-          {
-            title: "Temperature Converter",
-            difficulty: "Beginner",
-            description: "Create a program that converts Celsius to Fahrenheit and vice versa.",
-            languages: ["Python", "JavaScript", "Java"],
-            timeLimit: "20 minutes",
-            learningObjectives: [
-              "Basic type conversion",
-              "Simple mathematical operations",
-              "Function creation"
-            ]
-          },
-          {
-            title: "Guess the Number Game",
-            difficulty: "Beginner",
-            description: "Develop a simple number guessing game where the computer generates a random number.",
-            languages: ["Python", "JavaScript", "C++"],
-            timeLimit: "30 minutes",
-            learningObjectives: [
-              "Random number generation",
-              "User input handling",
-              "Conditional statements"
-            ]
-          }
-        ],
-        design: [
-          {
-            title: "Personal Portfolio Webpage",
-            difficulty: "Beginner",
-            description: "Create a simple personal portfolio webpage with HTML and CSS.",
-            skills: ["HTML", "CSS", "Responsive Design"],
-            timeLimit: "45 minutes",
-            learningObjectives: [
-              "Basic HTML structure",
-              "CSS styling",
-              "Layout design"
-            ]
-          }
-        ]
-      },
-      intermediate: {
-        coding: [
-          {
-            title: "Todo List Application",
-            difficulty: "Intermediate",
-            description: "Build a full-featured Todo List app with add, edit, delete, and mark complete functionality.",
-            languages: ["React", "Vue.js", "Angular"],
-            timeLimit: "90 minutes",
-            learningObjectives: [
-              "State management",
-              "CRUD operations",
-              "Component-based architecture"
-            ]
-          },
-          {
-            title: "Weather API Integration",
-            difficulty: "Intermediate",
-            description: "Create an application that fetches and displays weather data from a public API.",
-            languages: ["JavaScript", "Python", "Node.js"],
-            timeLimit: "60 minutes",
-            learningObjectives: [
-              "API integration",
-              "Async programming",
-              "Error handling"
-            ]
-          }
-        ],
-        algorithm: [
-          {
-            title: "Balanced Parentheses Checker",
-            difficulty: "Intermediate",
-            description: "Implement an algorithm to check if parentheses in a string are balanced.",
-            languages: ["Java", "C++", "Python"],
-            timeLimit: "45 minutes",
-            learningObjectives: [
-              "Stack data structure",
-              "String manipulation",
-              "Algorithmic thinking"
-            ]
-          }
-        ]
-      },
-      advanced: {
-        coding: [
-          {
-            title: "Real-time Chat Application",
-            difficulty: "Advanced",
-            description: "Develop a full-stack real-time chat application with WebSocket support.",
-            languages: ["Node.js", "React", "Socket.IO"],
-            timeLimit: "180 minutes",
-            learningObjectives: [
-              "WebSocket implementation",
-              "Full-stack development",
-              "Real-time communication"
-            ]
-          },
-          {
-            title: "Distributed Caching System",
-            difficulty: "Advanced",
-            description: "Design a distributed caching system with consistency and scalability.",
-            languages: ["Go", "Rust", "Distributed Systems"],
-            timeLimit: "240 minutes",
-            learningObjectives: [
-              "Distributed systems design",
-              "Caching strategies",
-              "Performance optimization"
-            ]
-          }
-        ],
-        algorithm: [
-          {
-            title: "Advanced Path Finding Algorithm",
-            difficulty: "Advanced",
-            description: "Implement A* pathfinding algorithm with obstacle avoidance.",
-            languages: ["Python", "C++", "Java"],
-            timeLimit: "120 minutes",
-            learningObjectives: [
-              "Graph algorithms",
-              "Heuristic optimization",
-              "Complex problem-solving"
-            ]
-          }
-        ]
+      coding: [
+        {
+          title: "Hello World Program",
+          difficulty: "Beginner",
+          description: "Write a program that prints 'Hello, World!' to the console.",
+          languages: ["JavaScript", "Python", "Java"],
+          timeLimit: "15 minutes"
+        },
+        {
+          title: "Sum Calculator",
+          difficulty: "Beginner",
+          description: "Create a function that calculates the sum of all numbers in an array.",
+          languages: ["JavaScript", "Python", "Ruby"],
+          timeLimit: "20 minutes"
+        },
+        {
+          title: "Palindrome Checker",
+          difficulty: "Intermediate",
+          description: "Create a function that checks if a given string is a palindrome.",
+          languages: ["JavaScript", "Python", "Java"],
+          timeLimit: "30 minutes"
+        },
+        {
+          title: "Fibonacci Sequence Generator",
+          difficulty: "Intermediate",
+          description: "Implement a function to generate Fibonacci sequence up to n terms.",
+          languages: ["C++", "Ruby", "Go"],
+          timeLimit: "45 minutes"
+        },
+        {
+          title: "Binary Tree Traversal",
+          difficulty: "Advanced",
+          description: "Implement in-order, pre-order, and post-order traversal of a binary tree.",
+          languages: ["Java", "C++", "Python"],
+          timeLimit: "60 minutes"
+        },
+        {
+          title: "Red-Black Tree Implementation",
+          difficulty: "Advanced",
+          description: "Implement a complete Red-Black Tree with insertion and deletion.",
+          languages: ["C++", "Java", "Python"],
+          timeLimit: "90 minutes"
+        }
+      ],
+      algorithm: [
+        {
+          title: "Linear Search",
+          difficulty: "Beginner",
+          description: "Implement a linear search algorithm to find an element in an array.",
+          languages: ["Python", "JavaScript", "Java"],
+          timeLimit: "20 minutes"
+        },
+        {
+          title: "Binary Search Implementation",
+          difficulty: "Intermediate",
+          description: "Implement a binary search algorithm on a sorted array.",
+          languages: ["Python", "Java", "C"],
+          timeLimit: "40 minutes"
+        },
+        {
+          title: "A* Pathfinding Algorithm",
+          difficulty: "Advanced",
+          description: "Implement the A* pathfinding algorithm for a 2D grid.",
+          languages: ["Python", "C++", "Java"],
+          timeLimit: "120 minutes"
+        }
+      ],
+      design: [
+        {
+          title: "Static Profile Card",
+          difficulty: "Beginner",
+          description: "Design a simple profile card using HTML and CSS.",
+          skills: ["HTML", "CSS", "Flexbox"],
+          timeLimit: "30 minutes"
+        },
+        {
+          title: "Responsive Landing Page",
+          difficulty: "Intermediate",
+          description: "Design a fully responsive landing page for a tech startup.",
+          skills: ["HTML", "CSS", "Flexbox"],
+          timeLimit: "90 minutes"
+        },
+        {
+          title: "E-Commerce Dashboard",
+          difficulty: "Advanced",
+          description: "Design a complex e-commerce dashboard with dark/light mode.",
+          skills: ["HTML", "CSS", "JavaScript"],
+          timeLimit: "180 minutes"
+        }
+      ]
+    };
+
+    this.difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
+    this.categories = Object.keys(this.challenges);
+  }
+
+  generateChallenge(category = null, difficulty = null) {
+    try {
+      // Validate category if provided
+      if (category && !this.categories.includes(category)) {
+        throw new Error(`Invalid category! Available categories are: ${this.categories.join(', ')}`);
       }
-    };
-  }
 
-  validateInput(difficulty, category) {
-    const validDifficulties = ['beginner', 'intermediate', 'advanced'];
-    const validCategories = Object.keys(this.challenges[validDifficulties[0]]);
+      // Validate difficulty if provided
+      if (difficulty && !this.difficultyLevels.includes(difficulty)) {
+        throw new Error(`Invalid difficulty! Available levels are: ${this.difficultyLevels.join(', ')}`);
+      }
 
-    if (!validDifficulties.includes(difficulty)) {
-      throw new Error(`difficulty`, 
-        `Oops! 🤖 I can only generate challenges for: ${validDifficulties.join(', ')}.`
-      );
+      const selectedCategory = category || 
+        this.categories[crypto.randomInt(0, this.categories.length)];
+
+      let challengeList = this.challenges[selectedCategory];
+
+      // Filter by difficulty if specified
+      if (difficulty) {
+        challengeList = challengeList.filter(c => c.difficulty === difficulty);
+        if (challengeList.length === 0) {
+          throw new Error(`No challenges found for ${difficulty} difficulty in ${selectedCategory} category!`);
+        }
+      }
+
+      const challenge = challengeList[crypto.randomInt(0, challengeList.length)];
+
+      return {
+        category: selectedCategory,
+        ...challenge,
+        id: this.generateChallengeId()
+      };
+    } catch (error) {
+      throw error;
     }
-
-    if (!validCategories.includes(category)) {
-      throw new Error(`category`, 
-        `Hmm... 🧐 I can only generate challenges in these categories: ${validCategories.join(', ')}.`
-      );
-    }
-  }
-
-  generateChallenge(difficulty = null, category = null) {
-    const difficulties = Object.keys(this.challenges);
-    const selectedDifficulty = difficulty || 
-      difficulties[crypto.randomInt(0, difficulties.length)];
-
-    const categories = Object.keys(this.challenges[selectedDifficulty]);
-    const selectedCategory = category || 
-      categories[crypto.randomInt(0, categories.length)];
-
-    this.validateInput(selectedDifficulty, selectedCategory);
-
-    const challengeList = this.challenges[selectedDifficulty][selectedCategory];
-    const challenge = challengeList[crypto.randomInt(0, challengeList.length)];
-
-    return {
-      difficulty: selectedDifficulty,
-      category: selectedCategory,
-      ...challenge,
-      id: this.generateChallengeId()
-    };
   }
 
   generateChallengeId() {
@@ -177,30 +142,57 @@ class ChallengeGenerator {
 
   formatChallengeMessage(challenge) {
     return `
-🚀 Challenge: ${challenge.title}
-🏷️ Difficulty: ${challenge.difficulty.toUpperCase()}
-📊 Category: ${challenge.category.toUpperCase()}
+Hey there! 👋 I'm Lumina, and I've got an exciting challenge for you!
+
+🌟 Challenge: ${challenge.title}
+🏷️ Category: ${challenge.category.toUpperCase()}
+📊 Difficulty: ${challenge.difficulty}
 
 📝 Description:
 ${challenge.description}
 
 🕒 Time Limit: ${challenge.timeLimit}
 
-💻 Recommended Languages: ${challenge.languages?.join(', ') || 'Any'}
-
-🎓 Learning Objectives:
-${challenge.learningObjectives.map(obj => `• ${obj}`).join('\n')}
+${challenge.languages ? 
+  `💻 Recommended Languages: ${challenge.languages.join(', ')}` : 
+  `🎨 Required Skills: ${challenge.skills?.join(', ') || challenge.tools?.join(', ')}`}
 
 🆔 Challenge ID: <code>${challenge.id}</code>
 
-💡 Tip: Break down the problem, plan your approach, and have fun coding!
+💡 Quick Tip from Lumina: Remember to break down the problem into smaller steps and plan before coding! You've got this! ✨
+
+Need help? Feel free to ask me questions! Type /help for more commands.
     `;
+  }
+
+  generateMultipleChallenges(count = 3, difficulty = null) {
+    try {
+      if (count > this.categories.length) {
+        throw new Error(`I can only generate up to ${this.categories.length} different challenges at once!`);
+      }
+
+      const challenges = [];
+      const usedCategories = new Set();
+
+      while (challenges.length < count) {
+        const challenge = this.generateChallenge(null, difficulty);
+        
+        if (!usedCategories.has(challenge.category)) {
+          challenges.push(challenge);
+          usedCategories.add(challenge.category);
+        }
+      }
+
+      return challenges;
+    } catch (error) {
+      throw error;
+    }
   }
 }
 
 module.exports = {
   name: 'challenge',
-  description: 'Generate coding challenges with difficulty levels',
+  description: 'Generate random coding or creative challenges',
   
   async execute(bot, msg, args) {
     const chatId = msg.chat.id;
@@ -209,18 +201,24 @@ module.exports = {
     try {
       await bot.sendChatAction(chatId, 'typing');
 
-      let challenge;
-      if (args.length === 2) {
-        const [difficulty, category] = args.map(arg => arg.toLowerCase());
-        challenge = challengeGenerator.generateChallenge(difficulty, category);
-      } else if (args.length === 1) {
-        const input = args[0].toLowerCase();
-        challenge = challengeGenerator.generateChallenge(input) || 
-          challengeGenerator.generateChallenge(null, input);
-      } else {
-        challenge = challengeGenerator.generateChallenge();
+      let category = null;
+      let difficulty = null;
+
+      // Parse arguments
+      if (args.length > 0) {
+        // Check if first argument is a difficulty level
+        if (challengeGenerator.difficultyLevels.includes(args[0])) {
+          difficulty = args[0];
+          if (args[1]) category = args[1].toLowerCase();
+        } else {
+          category = args[0].toLowerCase();
+          if (args[1] && challengeGenerator.difficultyLevels.includes(args[1])) {
+            difficulty = args[1];
+          }
+        }
       }
 
+      const challenge = challengeGenerator.generateChallenge(category, difficulty);
       const challengeMessage = challengeGenerator.formatChallengeMessage(challenge);
 
       await bot.sendMessage(chatId, challengeMessage, {
@@ -228,160 +226,42 @@ module.exports = {
       });
 
     } catch (error) {
-      let errorMessage;
-      if (error.type === 'difficulty') {
-        errorMessage = `🤖 Hey there! ${error.message}`;
-      } else if (error.type === 'category') {
-        errorMessage = `🧐 Oops! ${error.message}`;
-      } else {
-        errorMessage = "Hmm... Something went wrong. My circuits are a bit tangled! 🤖";
-      }
-
+      console.error('Challenge Generation Error:', error);
+      const errorMessage = `Oops! 😅 ${error.message || "I couldn't generate a challenge right now."}\n\nTry using the command like this:\n/challenge [difficulty] [category]\n\nFor example:\n/challenge Beginner coding\n/challenge Intermediate algorithm`;
+      
       await bot.sendMessage(chatId, errorMessage);
     }
-  
-    async multiChallenges(bot, msg, args) {
+  },
+
+  async multiChallenges(bot, msg, args) {
     const chatId = msg.chat.id;
     const challengeGenerator = new ChallengeGenerator();
 
     try {
       await bot.sendChatAction(chatId, 'typing');
 
-      let challenges;
-      if (args.length === 2) {
-        const [difficulty, category] = args.map(arg => arg.toLowerCase());
-        challengeGenerator.validateInput(difficulty, category);
-        
-        challenges = Array.from({ length: 3 }, () => 
-          challengeGenerator.generateChallenge(difficulty, category)
-        );
-      } else if (args.length === 1) {
-        const input = args[0].toLowerCase();
-        challenges = Array.from({ length: 3 }, () => {
-          try {
-            return challengeGenerator.generateChallenge(input) || 
-              challengeGenerator.generateChallenge(null, input);
-          } catch (error) {
-            return challengeGenerator.generateChallenge();
-          }
-        });
-      } else {
-        challenges = challengeGenerator.generateMultipleChallenges();
+      let difficulty = null;
+      if (args.length > 0 && challengeGenerator.difficultyLevels.includes(args[0])) {
+        difficulty = args[0];
       }
 
-      const challengeMessages = challenges.map(challenge => 
-        challengeGenerator.formatChallengeMessage(challenge)
-      ).join('\n\n---\n\n');
+      const challenges = challengeGenerator.generateMultipleChallenges(3, difficulty);
+      
+      const message = `Hey there! 🌟 I've prepared a set of exciting challenges for you!\n\n${
+        challenges.map(challenge => 
+          challengeGenerator.formatChallengeMessage(challenge)
+        ).join('\n\n---\n\n')
+      }\nGood luck! Remember, I'm here if you need any help! 🚀`;
 
-      await bot.sendMessage(chatId, challengeMessages, {
+      await bot.sendMessage(chatId, message, {
         parse_mode: 'HTML'
       });
 
     } catch (error) {
-      let errorMessage;
-      if (error.type === 'difficulty') {
-        errorMessage = `🤖 Oops! ${error.message} I'll generate a random challenge instead.`;
-      } else if (error.type === 'category') {
-        errorMessage = `🧐 Hmm... ${error.message} Let me surprise you with a random challenge!`;
-      } else {
-        errorMessage = "My challenge generator seems to be on a coffee break! 😅 Try again later.";
-      }
-
+      console.error('Multiple Challenges Generation Error:', error);
+      const errorMessage = `Oops! 😅 ${error.message || "I couldn't generate multiple challenges right now."}\n\nTry using the command like this:\n/multichallenges [difficulty]\n\nFor example:\n/multichallenges Beginner`;
+      
       await bot.sendMessage(chatId, errorMessage);
-    }
-  },
-
-  async challengeStats(bot, msg, args) {
-    const chatId = msg.chat.id;
-    const challengeGenerator = new ChallengeGenerator();
-
-    try {
-      const stats = {
-        totalChallenges: 0,
-        challengesByDifficulty: {},
-        challengesByCategory: {}
-      };
-
-      Object.keys(challengeGenerator.challenges).forEach(difficulty => {
-        stats.challengesByDifficulty[difficulty] = 0;
-        
-        Object.keys(challengeGenerator.challenges[difficulty]).forEach(category => {
-          const categoryChallenges = challengeGenerator.challenges[difficulty][category];
-          
-          stats.totalChallenges += categoryChallenges.length;
-          stats.challengesByDifficulty[difficulty] += categoryChallenges.length;
-          
-          if (!stats.challengesByCategory[category]) {
-            stats.challengesByCategory[category] = 0;
-          }
-          stats.challengesByCategory[category] += categoryChallenges.length;
-        });
-      });
-
-      const statsMessage = `
-🔍 Challenge Generator Stats:
-
-📊 Total Challenges: ${stats.totalChallenges}
-
-🏆 Challenges by Difficulty:
-${Object.entries(stats.challengesByDifficulty).map(([diff, count]) => 
-  `• ${diff.toUpperCase()}: ${count} challenges`
-).join('\n')}
-
-🧩 Challenges by Category:
-${Object.entries(stats.challengesByCategory).map(([category, count]) => 
-  `• ${category.toUpperCase()}: ${count} challenges`
-).join('\n')}
-
-💡 I'm always expanding my challenge library! Keep coding!
-      `;
-
-      await bot.sendMessage(chatId, statsMessage);
-
-    } catch (error) {
-      console.error('Challenge Stats Error:', error);
-      await bot.sendMessage(chatId, "Oops! My stats calculator seems to be taking a break. 🤖");
-    }
-  },
-
-  async suggestChallenge(bot, msg, args) {
-    const chatId = msg.chat.id;
-    const challengeGenerator = new ChallengeGenerator();
-
-    try {
-      await bot.sendChatAction(chatId, 'typing');
-
-      const learningPath = [
-        "Just starting your coding journey? 🌱",
-        "Feeling more confident and ready to level up? 🚀",
-        "Looking to tackle complex problems? 💪"
-      ];
-
-      const recommendationMessage = `
-🤖 Lumina's Challenge Recommendation:
-
-${learningPath.map((path, index) => 
-  `${['🟢', '🟡', '🔴'][index]} ${path}`
-).join('\n')}
-
-🎯 Recommended Difficulty Progression:
-1. Beginner Challenges: Build fundamental skills
-2. Intermediate Challenges: Apply and expand knowledge
-3. Advanced Challenges: Push your coding limits
-
-💡 Pro Tip: Don't just copy-paste code. Understand each line!
-
-🚀 Ready to start? Try:
-• /challenge beginner coding
-• /challenge intermediate algorithm
-• /challenge advanced design
-      `;
-
-      await bot.sendMessage(chatId, recommendationMessage);
-
-    } catch (error) {
-      console.error('Challenge Suggestion Error:', error);
-      await bot.sendMessage(chatId, "My recommendation engine is taking a quick nap! 😴");
     }
   }
 };
