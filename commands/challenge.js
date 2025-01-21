@@ -12,84 +12,84 @@ class ChallengeGenerator {
           timeLimit: "15 minutes"
         },
         {
-          title: "Sum Calculator",
+          title: "Array Sum Calculator",
           difficulty: "Beginner",
           description: "Create a function that calculates the sum of all numbers in an array.",
           languages: ["JavaScript", "Python", "Ruby"],
           timeLimit: "20 minutes"
         },
         {
+          title: "String Reversal",
+          difficulty: "Beginner",
+          description: "Write a function that reverses a string without using built-in reverse methods.",
+          languages: ["Python", "JavaScript", "Java"],
+          timeLimit: "25 minutes"
+        },
+        {
           title: "Palindrome Checker",
           difficulty: "Intermediate",
-          description: "Create a function that checks if a given string is a palindrome.",
+          description: "Create a function that checks if a given string is a palindrome, ignoring spaces and punctuation.",
           languages: ["JavaScript", "Python", "Java"],
           timeLimit: "30 minutes"
         },
         {
-          title: "Fibonacci Sequence Generator",
+          title: "Fibonacci Generator",
           difficulty: "Intermediate",
-          description: "Implement a function to generate Fibonacci sequence up to n terms.",
+          description: "Implement an efficient function to generate Fibonacci sequence up to n terms.",
           languages: ["C++", "Ruby", "Go"],
           timeLimit: "45 minutes"
         },
         {
-          title: "Binary Tree Traversal",
+          title: "Binary Tree Implementation",
           difficulty: "Advanced",
-          description: "Implement in-order, pre-order, and post-order traversal of a binary tree.",
+          description: "Implement a complete binary tree with insertion, deletion, and all three traversal methods.",
           languages: ["Java", "C++", "Python"],
-          timeLimit: "60 minutes"
-        },
-        {
-          title: "Red-Black Tree Implementation",
-          difficulty: "Advanced",
-          description: "Implement a complete Red-Black Tree with insertion and deletion.",
-          languages: ["C++", "Java", "Python"],
           timeLimit: "90 minutes"
         }
       ],
       algorithm: [
         {
-          title: "Linear Search",
+          title: "Bubble Sort",
           difficulty: "Beginner",
-          description: "Implement a linear search algorithm to find an element in an array.",
+          description: "Implement the bubble sort algorithm for an array of numbers.",
           languages: ["Python", "JavaScript", "Java"],
-          timeLimit: "20 minutes"
+          timeLimit: "30 minutes"
         },
         {
-          title: "Binary Search Implementation",
+          title: "Binary Search",
           difficulty: "Intermediate",
-          description: "Implement a binary search algorithm on a sorted array.",
+          description: "Implement an iterative binary search algorithm on a sorted array.",
           languages: ["Python", "Java", "C"],
           timeLimit: "40 minutes"
         },
         {
-          title: "A* Pathfinding Algorithm",
+          title: "Graph Traversal",
           difficulty: "Advanced",
-          description: "Implement the A* pathfinding algorithm for a 2D grid.",
+          description: "Implement both BFS and DFS for a graph, with cycle detection.",
           languages: ["Python", "C++", "Java"],
           timeLimit: "120 minutes"
         }
       ],
       design: [
         {
-          title: "Static Profile Card",
+          title: "Business Card",
           difficulty: "Beginner",
-          description: "Design a simple profile card using HTML and CSS.",
-          skills: ["HTML", "CSS", "Flexbox"],
+          description: "Create a simple business card design using HTML and CSS.",
+          skills: ["HTML", "CSS"],
           timeLimit: "30 minutes"
         },
         {
-          title: "Responsive Landing Page",
+          title: "Responsive Dashboard",
           difficulty: "Intermediate",
-          description: "Design a fully responsive landing page for a tech startup.",
-          skills: ["HTML", "CSS", "Flexbox"],
+          description: "Design a responsive admin dashboard with navigation and widgets.",
+          skills: ["HTML", "CSS", "JavaScript"],
           timeLimit: "90 minutes"
         },
         {
-          title: "E-Commerce Dashboard",
+          title: "E-Commerce Platform",
           difficulty: "Advanced",
-          description: "Design a complex e-commerce dashboard with dark/light mode.",
-          skills: ["HTML", "CSS", "JavaScript"],
+          description: "Design a full e-commerce platform with cart functionality and responsive design.",
+          skills: ["HTML", "CSS", "JavaScript", "React"],
           timeLimit: "180 minutes"
         }
       ]
@@ -99,14 +99,52 @@ class ChallengeGenerator {
     this.categories = Object.keys(this.challenges);
   }
 
+  getUsageInstructions() {
+    return `
+📚 Challenge Bot Commands Guide 📚
+
+1️⃣ Basic Challenge:
+   /challenge
+   • Generates a random challenge from any category and difficulty
+   
+2️⃣ Category-Specific Challenge:
+   /challenge [category]
+   • Example: /challenge coding
+   • Example: /challenge algorithm
+   • Example: /challenge design
+   
+3️⃣ Difficulty-Specific Challenge:
+   /challenge [difficulty]
+   • Example: /challenge Beginner
+   • Example: /challenge Intermediate
+   • Example: /challenge Advanced
+   
+4️⃣ Category and Difficulty:
+   /challenge [category] [difficulty]
+   • Example: /challenge coding Beginner
+   • Example: /challenge algorithm Advanced
+   
+5️⃣ Multiple Challenges:
+   /multichallenges
+   • Generates 3 different challenges
+   
+6️⃣ Multiple Challenges with Difficulty:
+   /multichallenges [difficulty]
+   • Example: /multichallenges Beginner
+
+Available Categories: ${this.categories.join(', ')}
+Difficulty Levels: ${this.difficultyLevels.join(', ')}
+
+Need help? Use /help to see this guide again! 🚀
+    `;
+  }
+
   generateChallenge(category = null, difficulty = null) {
     try {
-      // Validate category if provided
       if (category && !this.categories.includes(category)) {
         throw new Error(`Invalid category! Available categories are: ${this.categories.join(', ')}`);
       }
 
-      // Validate difficulty if provided
       if (difficulty && !this.difficultyLevels.includes(difficulty)) {
         throw new Error(`Invalid difficulty! Available levels are: ${this.difficultyLevels.join(', ')}`);
       }
@@ -116,7 +154,6 @@ class ChallengeGenerator {
 
       let challengeList = this.challenges[selectedCategory];
 
-      // Filter by difficulty if specified
       if (difficulty) {
         challengeList = challengeList.filter(c => c.difficulty === difficulty);
         if (challengeList.length === 0) {
@@ -142,7 +179,7 @@ class ChallengeGenerator {
 
   formatChallengeMessage(challenge) {
     return `
-Hey there! 👋 I'm Lumina, and I've got an exciting challenge for you!
+🎯 NEW CHALLENGE GENERATED!
 
 🌟 Challenge: ${challenge.title}
 🏷️ Category: ${challenge.category.toUpperCase()}
@@ -151,7 +188,7 @@ Hey there! 👋 I'm Lumina, and I've got an exciting challenge for you!
 📝 Description:
 ${challenge.description}
 
-🕒 Time Limit: ${challenge.timeLimit}
+⏱️ Time Limit: ${challenge.timeLimit}
 
 ${challenge.languages ? 
   `💻 Recommended Languages: ${challenge.languages.join(', ')}` : 
@@ -159,16 +196,16 @@ ${challenge.languages ?
 
 🆔 Challenge ID: <code>${challenge.id}</code>
 
-💡 Quick Tip from Lumina: Remember to break down the problem into smaller steps and plan before coding! You've got this! ✨
+💡 Tip: Break down the problem into smaller steps and test your solution with various inputs!
 
-Need help? Feel free to ask me questions! Type /help for more commands.
+Type /help to see all available commands and options.
     `;
   }
 
   generateMultipleChallenges(count = 3, difficulty = null) {
     try {
       if (count > this.categories.length) {
-        throw new Error(`I can only generate up to ${this.categories.length} different challenges at once!`);
+        throw new Error(`Can only generate up to ${this.categories.length} different challenges at once!`);
       }
 
       const challenges = [];
@@ -192,7 +229,7 @@ Need help? Feel free to ask me questions! Type /help for more commands.
 
 module.exports = {
   name: 'challenge',
-  description: 'Generate random coding or creative challenges',
+  description: 'Generate coding, algorithm, and design challenges',
   
   async execute(bot, msg, args) {
     const chatId = msg.chat.id;
@@ -200,6 +237,14 @@ module.exports = {
 
     try {
       await bot.sendChatAction(chatId, 'typing');
+
+      // If no arguments, show usage instructions
+      if (args.length === 0) {
+        await bot.sendMessage(chatId, challengeGenerator.getUsageInstructions(), {
+          parse_mode: 'HTML'
+        });
+        return;
+      }
 
       let category = null;
       let difficulty = null;
@@ -227,9 +272,11 @@ module.exports = {
 
     } catch (error) {
       console.error('Challenge Generation Error:', error);
-      const errorMessage = `Oops! 😅 ${error.message || "I couldn't generate a challenge right now."}\n\nTry using the command like this:\n/challenge [difficulty] [category]\n\nFor example:\n/challenge Beginner coding\n/challenge Intermediate algorithm`;
+      const errorMessage = `⚠️ Error: ${error.message || "Couldn't generate a challenge."}\n\n${challengeGenerator.getUsageInstructions()}`;
       
-      await bot.sendMessage(chatId, errorMessage);
+      await bot.sendMessage(chatId, errorMessage, {
+        parse_mode: 'HTML'
+      });
     }
   },
 
@@ -247,11 +294,11 @@ module.exports = {
 
       const challenges = challengeGenerator.generateMultipleChallenges(3, difficulty);
       
-      const message = `Hey there! 🌟 I've prepared a set of exciting challenges for you!\n\n${
+      const message = `🎯 MULTIPLE CHALLENGES GENERATED!\n\n${
         challenges.map(challenge => 
           challengeGenerator.formatChallengeMessage(challenge)
         ).join('\n\n---\n\n')
-      }\nGood luck! Remember, I'm here if you need any help! 🚀`;
+      }\nUse /help to see all available commands and options.`;
 
       await bot.sendMessage(chatId, message, {
         parse_mode: 'HTML'
@@ -259,9 +306,11 @@ module.exports = {
 
     } catch (error) {
       console.error('Multiple Challenges Generation Error:', error);
-      const errorMessage = `Oops! 😅 ${error.message || "I couldn't generate multiple challenges right now."}\n\nTry using the command like this:\n/multichallenges [difficulty]\n\nFor example:\n/multichallenges Beginner`;
+      const errorMessage = `⚠️ Error: ${error.message || "Couldn't generate multiple challenges."}\n\n${challengeGenerator.getUsageInstructions()}`;
       
-      await bot.sendMessage(chatId, errorMessage);
+      await bot.sendMessage(chatId, errorMessage, {
+        parse_mode: 'HTML'
+      });
     }
   }
 };
