@@ -101,41 +101,27 @@ class ChallengeGenerator {
 
   getUsageInstructions() {
     return `
-📚 Challenge Bot Commands Guide 📚
+📚 Challenge Guide 📚
 
-1️⃣ Basic Challenge:
-   /challenge
-   • Generates a random challenge from any category and difficulty
-   
-2️⃣ Category-Specific Challenge:
+1️⃣  Category-Specific Challenge:
    /challenge [category]
    • Example: /challenge coding
    • Example: /challenge algorithm
    • Example: /challenge design
-   
-3️⃣ Difficulty-Specific Challenge:
+
+2️⃣ Difficulty-Specific Challenge:
    /challenge [difficulty]
    • Example: /challenge Beginner
    • Example: /challenge Intermediate
    • Example: /challenge Advanced
-   
-4️⃣ Category and Difficulty:
+
+3️⃣ Category and Difficulty:
    /challenge [category] [difficulty]
    • Example: /challenge coding Beginner
    • Example: /challenge algorithm Advanced
-   
-5️⃣ Multiple Challenges:
-   /multichallenges
-   • Generates 3 different challenges
-   
-6️⃣ Multiple Challenges with Difficulty:
-   /multichallenges [difficulty]
-   • Example: /multichallenges Beginner
 
 Available Categories: ${this.categories.join(', ')}
 Difficulty Levels: ${this.difficultyLevels.join(', ')}
-
-Need help? Use /help to see this guide again! 🚀
     `;
   }
 
