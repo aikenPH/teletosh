@@ -1,4 +1,4 @@
-const { createCanvas, loadImage, registerFont } = require('canvas');
+const { createCanvas, loadImage } = require('canvas');
 const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
@@ -22,16 +22,16 @@ class EnhancedGitHubVisualizer {
 
   async fetchGitHubData(username) {
     try {
-      const userResponse = await axios.get(`https://api.github.com/users/${username}`);
-      const reposResponse = await axios.get(`https://api.github.com/users/${username}/repos`);
-      const contributionsResponse = await axios.get(
-        `https://github-contributions-api.deno.dev/${username}.json`
-      );
+      const [userResponse, reposResponse, eventsResponse] = await Promise.all([
+        axios.get(`https://api.github.com/users/${username}`),
+        axios.get(`https://api.github.com/users/${username}/repos`),
+        axios.get(`https://api.github.com/users/${username}/events/public`)
+      ]);
 
       return {
         user: userResponse.data,
         repos: reposResponse.data,
-        contributions: contributionsResponse.data
+        events: eventsResponse.data
       };
     } catch (error) {
       throw new Error(`Failed to fetch GitHub data: ${error.message}`);
@@ -44,27 +44,23 @@ class EnhancedGitHubVisualizer {
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // Set background with gradient
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, this.colors.background);
     gradient.addColorStop(1, '#161b22');
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Add subtle hexagonal pattern
     this.drawHexagonPattern(ctx, width, height);
 
-    // Draw sections with modern layout
     await this.drawUserInfo(ctx, data.user, 50, 40);
     this.drawStatistics(ctx, data.user, data.repos, 50, 220);
-    this.drawContributionGraph(ctx, data.contributions, 50, 340);
+    this.drawActivityGraph(ctx, data.events, 50, 340);
     await this.drawLanguageCards(ctx, data.repos, 50, 480);
 
-    // Add decorative elements
     this.drawDecorations(ctx, width, height);
     await this.drawBrandingFooter(ctx, width - 60, height - 30);
 
-    return canvas.toBuffer('image/png');
+    return canvas.toBuffer();
   }
 
   drawHexagonPattern(ctx, width, height) {
@@ -93,11 +89,9 @@ class EnhancedGitHubVisualizer {
   }
 
   async drawUserInfo(ctx, user, x, y) {
-    // Draw avatar with glowing effect
     const avatarSize = 130;
     const avatar = await loadImage(user.avatar_url);
     
-    // Draw glow
     ctx.save();
     ctx.shadowColor = this.colors.accent;
     ctx.shadowBlur = 15;
@@ -107,24 +101,81 @@ class EnhancedGitHubVisualizer {
     ctx.drawImage(avatar, x, y, avatarSize, avatarSize);
     ctx.restore();
 
-    // Draw user info with modern typography
     ctx.fillStyle = this.colors.text;
-    ctx.font = 'bold 36px Inter';
+    ctx.font = 'bold 36px Arial';
     ctx.fillText(user.name || user.login, x + avatarSize + 30, y + 45);
     
     ctx.fillStyle = this.colors.accent;
-    ctx.font = '22px Inter';
+    ctx.font = '22px Arial';
     ctx.fillText(`@${user.login}`, x + avatarSize + 30, y + 80);
 
-    // Draw bio with improved wrapping
     if (user.bio) {
       ctx.fillStyle = this.colors.secondary;
-      ctx.font = '18px Inter';
+      ctx.font = '18px Arial';
       const bioLines = this.wrapText(ctx, user.bio, 650, 18);
       bioLines.forEach((line, index) => {
         ctx.fillText(line, x + avatarSize + 30, y + 115 + (index * 25));
       });
     }
+  }
+
+  drawActivityGraph(ctx, events, x, y) {
+    const title = 'Recent Activity';
+    ctx.fillStyle = this.colors.text;
+    ctx.font = 'bold 24px Arial';
+    ctx.fillText(title, x, y - 15);
+
+    const graphWidth = 1100;
+    const graphHeight = 100;
+    const padding = 20;
+
+    // graph background
+    ctx.fillStyle = this.colors.cardBg;
+    this.drawRoundedRect(ctx, x, y, graphWidth, graphHeight, 10);
+    ctx.fill();
+
+    // events data
+    const activityData = this.processEvents(events);
+    const maxActivity = Math.max(...Object.values(activityData));
+    
+    // activity bars
+    Object.entries(activityData).forEach(([date, count], index) => {
+      const barHeight = (count / maxActivity) * (graphHeight - padding * 2);
+      const barWidth = (graphWidth - padding * 2) / Object.keys(activityData).length;
+      const barX = x + padding + (index * barWidth);
+      const barY = y + graphHeight - padding - barHeight;
+
+      ctx.fillStyle = this.interpolateColor(
+        this.colors.gradient.start,
+        this.colors.gradient.end,
+        count / maxActivity
+      );
+      this.drawRoundedRect(ctx, barX, barY, barWidth - 2, barHeight, 3);
+      ctx.fill();
+    });
+  }
+
+  processEvents(events) {
+    const activity = {};
+    const now = new Date();
+    const days = 14; // last 14 days of activity
+
+    // all days with 0
+    for (let i = 0; i < days; i++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      activity[date.toISOString().split('T')[0]] = 0;
+    }
+
+    // events
+    events.forEach(event => {
+      const date = event.created_at.split('T')[0];
+      if (activity[date] !== undefined) {
+        activity[date]++;
+      }
+    });
+
+    return activity;
   }
 
   drawStatistics(ctx, user, repos, x, y) {
@@ -142,7 +193,6 @@ class EnhancedGitHubVisualizer {
     stats.forEach((stat, index) => {
       const boxX = x + (index * (boxWidth + gap));
       
-      // Draw modern card with gradient border
       ctx.save();
       ctx.fillStyle = this.colors.cardBg;
       ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
@@ -151,7 +201,6 @@ class EnhancedGitHubVisualizer {
       this.drawRoundedRect(ctx, boxX, y, boxWidth, boxHeight, 12);
       ctx.fill();
       
-      // Draw gradient border
       const gradient = ctx.createLinearGradient(boxX, y, boxX + boxWidth, y + boxHeight);
       gradient.addColorStop(0, this.colors.gradient.start);
       gradient.addColorStop(1, this.colors.gradient.end);
@@ -160,46 +209,13 @@ class EnhancedGitHubVisualizer {
       ctx.stroke();
       ctx.restore();
 
-      // Draw content
       ctx.fillStyle = this.colors.text;
-      ctx.font = 'bold 32px Inter';
+      ctx.font = 'bold 32px Arial';
       ctx.fillText(`${stat.icon} ${stat.value.toLocaleString()}`, boxX + 20, y + 40);
 
       ctx.fillStyle = this.colors.secondary;
-      ctx.font = '18px Inter';
+      ctx.font = '18px Arial';
       ctx.fillText(stat.label, boxX + 20, y + 65);
-    });
-  }
-
-  drawContributionGraph(ctx, contributions, x, y) {
-    const title = ' ';
-    ctx.fillStyle = this.colors.text;
-    ctx.font = 'bold 24px Inter';
-    ctx.fillText(title, x, y - 15);
-
-    const weeks = contributions.contributions.slice(-52);
-    const cellSize = 12;
-    const cellGap = 3;
-    const rows = 7;
-
-    // Draw contribution cells with modern style
-    weeks.forEach((week, weekIndex) => {
-      week.forEach((day, dayIndex) => {
-        const cellX = x + (weekIndex * (cellSize + cellGap));
-        const cellY = y + (dayIndex * (cellSize + cellGap));
-        
-        // Enhanced color interpolation for better visualization
-        const intensity = Math.min(day.count / 10, 1);
-        const color = this.interpolateColor('#0e4429', '#39d353', intensity);
-        
-        ctx.save();
-        ctx.fillStyle = day.count > 0 ? color : '#161b22';
-        ctx.shadowColor = day.count > 0 ? color : 'transparent';
-        ctx.shadowBlur = day.count > 5 ? 5 : 0;
-        this.drawRoundedRect(ctx, cellX, cellY, cellSize, cellSize, 3);
-        ctx.fill();
-        ctx.restore();
-      });
     });
   }
 
@@ -207,21 +223,22 @@ class EnhancedGitHubVisualizer {
     const languages = {};
     let totalSize = 0;
 
-    // Calculate language usage
-    repos.forEach(repo => {
-      if (repo.language) {
-        languages[repo.language] = (languages[repo.language] || 0) + repo.size;
-        totalSize += repo.size;
-      }
-    });
+    if (Array.isArray(repos)) {
+      repos.forEach(repo => {
+        if (repo.language) {
+          languages[repo.language] = (languages[repo.language] || 0) + repo.size;
+          totalSize += repo.size;
+        }
+      });
+    }
 
     const sortedLanguages = Object.entries(languages)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
-    const title = 'Top Languages';
+    const title = ' '; // top Language
     ctx.fillStyle = this.colors.text;
-    ctx.font = 'bold 24px Inter';
+    ctx.font = 'bold 24px Arial';
     ctx.fillText(title, x, y - 15);
 
     const cardWidth = 200;
@@ -232,7 +249,6 @@ class EnhancedGitHubVisualizer {
       const cardX = x + (index * (cardWidth + cardGap));
       const percentage = (size / totalSize) * 100;
 
-      // Draw language card
       ctx.save();
       ctx.fillStyle = this.colors.cardBg;
       ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
@@ -241,33 +257,28 @@ class EnhancedGitHubVisualizer {
       this.drawRoundedRect(ctx, cardX, y, cardWidth, cardHeight, 10);
       ctx.fill();
 
-      // Draw language color indicator
       const indicatorHeight = 5;
       ctx.fillStyle = this.getLanguageColor(language);
       ctx.fillRect(cardX, y, cardWidth, indicatorHeight);
 
-      // Draw language name
       ctx.fillStyle = this.colors.text;
-      ctx.font = 'bold 20px Inter';
+      ctx.font = 'bold 20px Arial';
       ctx.fillText(language, cardX + 15, y + 35);
 
-      // Draw percentage
       ctx.fillStyle = this.colors.secondary;
-      ctx.font = '16px Inter';
+      ctx.font = '16px Arial';
       ctx.fillText(`${percentage.toFixed(1)}%`, cardX + 15, y + 60);
       ctx.restore();
     });
   }
 
   drawDecorations(ctx, width, height) {
-    // Add subtle corner decorations
     ctx.save();
     ctx.globalAlpha = 0.1;
     ctx.strokeStyle = this.colors.accent;
     ctx.lineWidth = 2;
     
     const cornerSize = 40;
-    // Top-left corner
     ctx.beginPath();
     ctx.moveTo(20, 20);
     ctx.lineTo(20, 20 + cornerSize);
@@ -275,7 +286,6 @@ class EnhancedGitHubVisualizer {
     ctx.lineTo(20 + cornerSize, 20);
     ctx.stroke();
 
-    // Bottom-right corner
     ctx.beginPath();
     ctx.moveTo(width - 20, height - 20);
     ctx.lineTo(width - 20, height - 20 - cornerSize);
@@ -287,12 +297,11 @@ class EnhancedGitHubVisualizer {
 
   async drawBrandingFooter(ctx, x, y) {
     ctx.fillStyle = this.colors.secondary;
-    ctx.font = '16px Inter';
+    ctx.font = '16px Arial';
     ctx.textAlign = 'right';
     ctx.fillText('✢ Generated by Lumina', x, y);
   }
 
-  // Utility functions remain the same as in the original code
   drawRoundedRect(ctx, x, y, width, height, radius) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -368,9 +377,9 @@ class EnhancedGitHubVisualizer {
 
   getUsageInstructions() {
     return `
-🎨 <b>Enhanced GitHub Profile Visualizer</b> 🎨
+🎨 <b>GitHub Profile Visualizer</b> 🎨
 
-Create stunning, modern visualizations of any GitHub profile with our enhanced design!
+Create data visualizations of any GitHub profile!
 
 Usage:
 /github [username]
@@ -379,13 +388,12 @@ Example:
 <code>/github torvalds</code>
 
 Features:
-• Modern gradient-based design
+• Gradient-based design
 • Interactive stats cards
-• Enhanced language visualization
-• Beautiful contribution graph
+• Language visualization
+• Activity timeline graph
 • Animated glow effects
 • Customized typography
-• And much more!
 
 ✨ Give it a try with your GitHub username! ✨`;
   }
@@ -415,8 +423,11 @@ module.exports = {
       
       const profileImage = await visualizer.generateProfileImage(data);
 
-      await bot.sendPhoto(chatId, profileImage, {
-        caption: `🎨 GitHub Profile Visualization for @${username}\n\nGenerated on ${new Date().toLocaleDateString()}\n\nFeaturing modern design and interactive elements!`,
+      const imageBuffer = Buffer.from(profileImage);
+      imageBuffer.filename = 'github_profile.png';
+
+      await bot.sendPhoto(chatId, imageBuffer, {
+        caption: `🎨 GitHub Profile Visualization for @${username}\n\nGenerated on ${new Date().toLocaleDateString()}\n\n✢ Generated by Lumina`,
         parse_mode: 'HTML'
       });
 
