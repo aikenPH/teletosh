@@ -38,7 +38,7 @@ Please provide a word to look up!
 • Phonetic: <i>${data.pronunciation.phonetic}</i>
 
 🔍 <b>Definitions:</b>
-${data.definitions.map((def, index) => `${index + 1}. ${def}`).join('\n')}
+${data.definitions.map((def, index) => `${def}`).join('\n')}
 
 💡 <b>Example Usages:</b>
 ${data.examples.slice(0, 3).map((example, index) => `• ${example}`).join('\n')}
