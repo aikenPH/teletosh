@@ -37,7 +37,7 @@ ${data.pronunciation ? `<b>📣 Pronunciation:</b>
 • Phonetic: <i>${data.pronunciation.phonetic || 'N/A'}</i>\n` : ''}
 
 ${data.definitions?.length > 0 ? `🔍 <b>Definitions:</b>
-${data.definitions.map((def, index) => `${index + 1}. <i>${def}</i>`).join('\n')}\n` : ''}
+${data.definitions.map((def, index) => `${def}`).join('\n')}\n` : ''}
 
 ${data.examples?.length > 0 ? `💡 <b>Example Usages:</b>
 ${data.examples.slice(0, 3).map((example, index) => `• <i>${example}</i>`).join('\n')}\n` : ''}
