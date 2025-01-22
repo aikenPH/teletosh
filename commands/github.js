@@ -129,10 +129,10 @@ class EnhancedGitHubVisualizer {
 
   drawStatistics(ctx, user, repos, x, y) {
     const stats = [
-      { label: 'Repositories', value: user.public_repos, icon: '📚' },
-      { label: 'Followers', value: user.followers, icon: '👥' },
-      { label: 'Following', value: user.following, icon: '🤝' },
-      { label: 'Stars', value: repos.reduce((acc, repo) => acc + repo.stargazers_count, 0), icon: '⭐' }
+      { label: 'Repositories', value: user.public_repos, icon: '♜' },
+      { label: 'Followers', value: user.followers, icon: '♟' },
+      { label: 'Following', value: user.following, icon: '▶' },
+      { label: 'Stars', value: repos.reduce((acc, repo) => acc + repo.stargazers_count, 0), icon: '★' }
     ];
 
     const boxWidth = 260;
@@ -172,7 +172,7 @@ class EnhancedGitHubVisualizer {
   }
 
   drawContributionGraph(ctx, contributions, x, y) {
-    const title = '📊 Contribution Activity';
+    const title = ' ';
     ctx.fillStyle = this.colors.text;
     ctx.font = 'bold 24px Inter';
     ctx.fillText(title, x, y - 15);
@@ -219,7 +219,7 @@ class EnhancedGitHubVisualizer {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
-    const title = '🔧 Top Languages';
+    const title = 'Top Languages';
     ctx.fillStyle = this.colors.text;
     ctx.font = 'bold 24px Inter';
     ctx.fillText(title, x, y - 15);
