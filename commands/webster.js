@@ -1,4 +1,4 @@
-const axios = require('axios'); // Import axios for making HTTP requests
+const axios = require('axios');
 
 module.exports = {
   name: 'webster',
@@ -7,7 +7,6 @@ module.exports = {
   async execute(bot, msg, args) {
     const chatId = msg.chat.id;
 
-    // Check if a word was provided
     if (args.length === 0) {
       await bot.sendMessage(chatId, `
 🔍 <b>Webster Dictionary Lookup</b>
@@ -23,37 +22,35 @@ Please provide a word to look up!
     const word = args[0].toLowerCase();
 
     try {
-      // Fetch data from the Webster API
+      await bot.sendChatAction(chatId, 'typing');
+      
       const response = await axios.get(`https://myapi-2f5b.onrender.com/webster/${word}`);
       const data = response.data;
 
-      // Construct the message text with the dictionary entry
       let messageText = `
 <b>📘 Dictionary Entry: ${data.word.toUpperCase()}</b>
 
-<i>Part of Speech:</i> ${data.partOfSpeech}
+${data.partOfSpeech ? `<i>Part of Speech:</i> <b>${data.partOfSpeech}</b>\n` : ''}
 
-<b>📣 Pronunciation:</b>
-• Spelled: <code>${data.pronunciation.spelled}</code>
-• Phonetic: <i>${data.pronunciation.phonetic}</i>
+${data.pronunciation ? `<b>📣 Pronunciation:</b>
+• Spelled: <code>${data.pronunciation.spelled || 'N/A'}</code>
+• Phonetic: <i>${data.pronunciation.phonetic || 'N/A'}</i>\n` : ''}
 
-🔍 <b>Definitions:</b>
-${data.definitions.map((def, index) => `${def}`).join('\n')}
+${data.definitions?.length > 0 ? `🔍 <b>Definitions:</b>
+${data.definitions.map((def, index) => `${index + 1}. <i>${def}</i>`).join('\n')}\n` : ''}
 
-💡 <b>Example Usages:</b>
-${data.examples.slice(0, 3).map((example, index) => `• ${example}`).join('\n')}
+${data.examples?.length > 0 ? `💡 <b>Example Usages:</b>
+${data.examples.slice(0, 3).map((example, index) => `• <i>${example}</i>`).join('\n')}\n` : ''}
 
-🔗 <a href="${data.pronunciation.audioUrl}">Listen to Pronunciation</a>
-      `;
+${data.pronunciation?.audioUrl ? `🔗 <a href="${data.pronunciation.audioUrl}">Listen to Pronunciation</a>` : ''}
+      `.trim();
 
-      // Optional: Word of the Day section
       if (data.wordOfTheDay) {
         messageText += `\n\n🌟 <b>Word of the Day:</b>
 • ${data.wordOfTheDay.word}
 • <a href="${data.wordOfTheDay.url}">Learn More</a>`;
       }
 
-      // Send the constructed message to the chat
       await bot.sendMessage(chatId, messageText, {
         parse_mode: 'HTML',
         disable_web_page_preview: false
@@ -62,12 +59,10 @@ ${data.examples.slice(0, 3).map((example, index) => `• ${example}`).join('\n')
     } catch (error) {
       console.error('Webster Dictionary Error:', error);
       
-      // Customize error messages based on the error response
       const errorMessage = error.response?.status === 404 
         ? `❌ Word not found: <b>${word}</b>\nPlease check the spelling.`
         : '❌ An error occurred while fetching dictionary data. Please try again later.';
 
-      // Send the error message to the chat
       await bot.sendMessage(chatId, errorMessage, { parse_mode: 'HTML' });
     }
   }
