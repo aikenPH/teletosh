@@ -416,7 +416,7 @@ module.exports = {
       }
 
       const username = args[0];
-      await bot.sendMessage(chatId, `✨ Creating enhanced visualization for @${username}...`);
+      await bot.sendMessage(chatId, `✨ Creating data visualization for https://github.com/${username}...`);
       
       const data = await visualizer.fetchGitHubData(username);
       await bot.sendChatAction(chatId, 'upload_photo');
