@@ -120,7 +120,7 @@ class EnhancedGitHubVisualizer {
   }
 
   drawActivityGraph(ctx, events, x, y) {
-    const title = 'Recent Activity';
+    const title = ' '; // recent activity
     ctx.fillStyle = this.colors.text;
     ctx.font = 'bold 24px Arial';
     ctx.fillText(title, x, y - 15);
