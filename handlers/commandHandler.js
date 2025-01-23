@@ -1,4 +1,4 @@
-const levenshtein = require("fast-levenshtein")
+const { findMostSimilarCommand } = require("../utils/stringSimilarity")
 
 class CommandHandler {
   constructor(bot, db) {
@@ -6,47 +6,42 @@ class CommandHandler {
     this.db = db
     this.commands = new Map()
     this.ownerCommands = new Map()
-    this.commandAliases = new Map()
-    this.commandDescriptions = new Map()
   }
 
-  addCommand(name, handler, options = {}) {
-    const { isOwnerCommand = false, aliases = [], description = "" } = options
-
+  addCommand(name, handler, isOwnerCommand = false) {
     if (isOwnerCommand) {
       this.ownerCommands.set(name, handler)
     } else {
       this.commands.set(name, handler)
     }
-
-    this.commandDescriptions.set(name, description)
-
-    aliases.forEach((alias) => {
-      this.commandAliases.set(alias, name)
-    })
   }
 
   async handleCommand(msg) {
     const [command, ...args] = msg.text.split(" ")
     const commandName = command.substring(1).toLowerCase()
 
-    const actualCommandName = this.commandAliases.get(commandName) || commandName
-
-    const ownerHandler = this.ownerCommands.get(actualCommandName)
+    const ownerHandler = this.ownerCommands.get(commandName)
     if (ownerHandler) {
       return this.handleOwnerCommand(ownerHandler, msg, args)
     }
 
-    const handler = this.commands.get(actualCommandName)
+    const handler = this.commands.get(commandName)
 
     if (!handler) {
-      const suggestion = this.findSimilarCommand(actualCommandName)
-      return this.handleUnknownCommand(msg, actualCommandName, suggestion)
+      const allCommands = [...this.commands.keys(), ...this.ownerCommands.keys()]
+      const suggestion = findMostSimilarCommand(commandName, allCommands)
+
+      let responseMessage = "🚫 Unknown command. Type /help for a list of available commands."
+      if (suggestion) {
+        responseMessage += `\n\nDid you mean: /${suggestion}?`
+      }
+
+      return this.bot.sendMessage(msg.chat.id, responseMessage)
     }
 
     try {
       if (msg.chat.type === "group" || msg.chat.type === "supergroup") {
-        await this.checkBotAdminStatus(msg, actualCommandName)
+        await this.checkBotAdminStatus(msg, commandName)
       }
 
       await handler(this.bot, msg, args, this.db)
@@ -138,59 +133,14 @@ This will help me serve the group effectively! 🌟
     })
   }
 
-  findSimilarCommand(inputCommand) {
-    const allCommands = [...this.commands.keys(), ...this.ownerCommands.keys()]
-    let closestMatch = ""
-    let minDistance = Number.POSITIVE_INFINITY
-
-    for (const command of allCommands) {
-      const distance = levenshtein.get(inputCommand, command)
-      if (distance < minDistance) {
-        minDistance = distance
-        closestMatch = command
-      }
-    }
-
-    return minDistance <= inputCommand.length / 2 ? closestMatch : ""
-  }
-
-  handleUnknownCommand(msg, inputCommand, suggestion) {
-    let responseMessage = `🚫 Unknown command: /${inputCommand}. `
-
-    if (suggestion) {
-      responseMessage += `Did you mean: /${suggestion}?`
-      if (this.commandDescriptions.has(suggestion)) {
-        responseMessage += `\n\n${this.commandDescriptions.get(suggestion)}`
-      }
-    } else {
-      responseMessage += `Type /help for a list of available commands.`
-    }
-
-    return this.bot.sendMessage(msg.chat.id, responseMessage, { parse_mode: "HTML" })
-  }
-
   loadCommands() {
-    const fs = require("fs")
-    const path = require("path")
-    const commandsPath = path.join(__dirname, "..", "commands")
+    const commandsPath = path.join(__dirname, "../commands")
     const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js"))
 
     for (const file of commandFiles) {
       const command = require(path.join(commandsPath, file))
-      this.addCommand(command.name, command.execute, {
-        isOwnerCommand: command.owner === true,
-        aliases: command.aliases || [],
-        description: command.description || "",
-      })
+      this.addCommand(command.name, command.execute, command.owner === true)
     }
-  }
-
-  getCommandList() {
-    const commandList = []
-    for (const [name, description] of this.commandDescriptions) {
-      commandList.push(`/${name} - ${description}`)
-    }
-    return commandList.join("\n")
   }
 }
 
