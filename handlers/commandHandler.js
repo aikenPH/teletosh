@@ -1,4 +1,4 @@
-const { levenshteinDistance } = require("../utils/stringUtils")
+const levenshtein = require("fast-levenshtein")
 
 class CommandHandler {
   constructor(bot, db) {
@@ -6,43 +6,47 @@ class CommandHandler {
     this.db = db
     this.commands = new Map()
     this.ownerCommands = new Map()
+    this.commandAliases = new Map()
     this.commandDescriptions = new Map()
   }
 
-  addCommand(name, handler, description, isOwnerCommand = false) {
+  addCommand(name, handler, options = {}) {
+    const { isOwnerCommand = false, aliases = [], description = "" } = options
+
     if (isOwnerCommand) {
       this.ownerCommands.set(name, handler)
     } else {
       this.commands.set(name, handler)
     }
+
     this.commandDescriptions.set(name, description)
+
+    aliases.forEach((alias) => {
+      this.commandAliases.set(alias, name)
+    })
   }
 
   async handleCommand(msg) {
     const [command, ...args] = msg.text.split(" ")
     const commandName = command.substring(1).toLowerCase()
 
-    const ownerHandler = this.ownerCommands.get(commandName)
+    const actualCommandName = this.commandAliases.get(commandName) || commandName
+
+    const ownerHandler = this.ownerCommands.get(actualCommandName)
     if (ownerHandler) {
       return this.handleOwnerCommand(ownerHandler, msg, args)
     }
 
-    const handler = this.commands.get(commandName)
+    const handler = this.commands.get(actualCommandName)
 
     if (!handler) {
-      const suggestion = this.getSuggestion(commandName)
-      if (suggestion) {
-        return this.bot.sendMessage(
-          msg.chat.id,
-          `❌ Unknown command. Did you mean /${suggestion}?\nType /help for a list of available commands.`,
-        )
-      }
-      return this.bot.sendMessage(msg.chat.id, "❌ Unknown command. Type /help for a list of available commands.")
+      const suggestion = this.findSimilarCommand(actualCommandName)
+      return this.handleUnknownCommand(msg, actualCommandName, suggestion)
     }
 
     try {
       if (msg.chat.type === "group" || msg.chat.type === "supergroup") {
-        await this.checkBotAdminStatus(msg, commandName)
+        await this.checkBotAdminStatus(msg, actualCommandName)
       }
 
       await handler(this.bot, msg, args, this.db)
@@ -54,7 +58,7 @@ class CommandHandler {
   async handleOwnerCommand(handler, msg, args) {
     const ownerId = process.env.OWNER_ID ? Number.parseInt(process.env.OWNER_ID) : null
     if (!ownerId || msg.from.id !== ownerId) {
-      await this.bot.sendMessage(msg.chat.id, "❌ This command is restricted to the bot owner only.")
+      await this.bot.sendMessage(msg.chat.id, "🚫 This command is restricted to the bot owner only.")
       return
     }
 
@@ -134,47 +138,59 @@ This will help me serve the group effectively! 🌟
     })
   }
 
+  findSimilarCommand(inputCommand) {
+    const allCommands = [...this.commands.keys(), ...this.ownerCommands.keys()]
+    let closestMatch = ""
+    let minDistance = Number.POSITIVE_INFINITY
+
+    for (const command of allCommands) {
+      const distance = levenshtein.get(inputCommand, command)
+      if (distance < minDistance) {
+        minDistance = distance
+        closestMatch = command
+      }
+    }
+
+    return minDistance <= inputCommand.length / 2 ? closestMatch : ""
+  }
+
+  handleUnknownCommand(msg, inputCommand, suggestion) {
+    let responseMessage = `🚫 Unknown command: /${inputCommand}. `
+
+    if (suggestion) {
+      responseMessage += `Did you mean: /${suggestion}?`
+      if (this.commandDescriptions.has(suggestion)) {
+        responseMessage += `\n\n${this.commandDescriptions.get(suggestion)}`
+      }
+    } else {
+      responseMessage += `Type /help for a list of available commands.`
+    }
+
+    return this.bot.sendMessage(msg.chat.id, responseMessage, { parse_mode: "HTML" })
+  }
+
   loadCommands() {
-    const commandFiles = require("fs")
-      .readdirSync("./commands")
-      .filter((file) => file.endsWith(".js"))
+    const fs = require("fs")
+    const path = require("path")
+    const commandsPath = path.join(__dirname, "..", "commands")
+    const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js"))
 
     for (const file of commandFiles) {
-      const command = require(`../commands/${file}`)
-      this.addCommand(command.name, command.execute, command.description, command.owner === true)
+      const command = require(path.join(commandsPath, file))
+      this.addCommand(command.name, command.execute, {
+        isOwnerCommand: command.owner === true,
+        aliases: command.aliases || [],
+        description: command.description || "",
+      })
     }
   }
 
-  getSuggestion(commandName) {
-    const allCommands = [...this.commands.keys(), ...this.ownerCommands.keys()]
-    const suggestions = allCommands.map((cmd) => ({
-      name: cmd,
-      distance: levenshteinDistance(commandName, cmd),
-    }))
-
-    suggestions.sort((a, b) => a.distance - b.distance)
-
-    return suggestions[0].distance <= 2 ? suggestions[0].name : null
-  }
-
-  setupCommandSuggestions() {
-    this.bot.on("text", (msg) => {
-      if (msg.text === "/") {
-        const commands = [...this.commands.keys()].map((name) => ({
-          command: name,
-          description: this.commandDescriptions.get(name),
-        }))
-
-        this.bot
-          .setMyCommands(commands)
-          .then(() => {
-            console.log("Bot commands updated successfully")
-          })
-          .catch((error) => {
-            console.error("Error updating bot commands:", error)
-          })
-      }
-    })
+  getCommandList() {
+    const commandList = []
+    for (const [name, description] of this.commandDescriptions) {
+      commandList.push(`/${name} - ${description}`)
+    }
+    return commandList.join("\n")
   }
 }
 
