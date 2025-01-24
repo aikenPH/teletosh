@@ -2,12 +2,12 @@ const crypto = require('crypto');
 
 module.exports = {
   name: "hangman",
-  description: "Advanced Hangman Game with Enhanced Features",
+  description: "Hangman Game with Fixed Keyboard",
   
   async execute(bot, msg, args, db) {
     const chatId = msg.chat.id;
     
-    // Advanced word list with varied difficulty
+    // Predefined word list with varied difficulty
     const words = {
       easy: ["cat", "dog", "bird", "fish", "tree"],
       medium: ["python", "coding", "robot", "music", "dance"],
@@ -41,18 +41,15 @@ module.exports = {
       return hangmanStages[6 - remainingAttempts];
     }
 
-    // Generate random letter keyboard
-    function generateRandomKeyboard() {
+    // Fixed keyboard layout
+    function createFixedKeyboard() {
       const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
-      const shuffledAlphabet = alphabet
-        .sort(() => 0.5 - Math.random());
-      
       return [
-        shuffledAlphabet.slice(0, 13).map(letter => ({
+        alphabet.slice(0, 13).map(letter => ({
           text: guessedLetters.has(letter) ? '✓' : letter.toUpperCase(),
           callback_data: letter
         })),
-        shuffledAlphabet.slice(13).map(letter => ({
+        alphabet.slice(13).map(letter => ({
           text: guessedLetters.has(letter) ? '✓' : letter.toUpperCase(),
           callback_data: letter
         }))
@@ -82,7 +79,7 @@ module.exports = {
         `${getGameInstructions()}\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}`, 
         {
           reply_markup: {
-            inline_keyboard: generateRandomKeyboard()
+            inline_keyboard: createFixedKeyboard()
           }
         }
       );
@@ -100,7 +97,7 @@ module.exports = {
             chat_id: chatId,
             message_id: gameMessage.message_id,
             reply_markup: {
-              inline_keyboard: generateRandomKeyboard()
+              inline_keyboard: createFixedKeyboard()
             }
           }
         );
@@ -119,7 +116,7 @@ module.exports = {
           text: "You've already guessed this letter!",
           show_alert: true
         });
-        return;
+        return true;
       }
 
       guessedLetters.add(letter);
