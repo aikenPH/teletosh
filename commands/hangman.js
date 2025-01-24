@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 module.exports = {
   name: "hangman",
-  description: "Hangman Game with Comprehensive Word List and Strategic Word Generation",
+  description: "Hangman Game with Randomized Letter Placement",
   
   async execute(bot, msg, args, db) {
     const chatId = msg.chat.id;
@@ -36,18 +36,48 @@ module.exports = {
       { word: "compiler", requiredLetters: ['c', 'o', 'm', 'p', 'i', 'l', 'e', 'r'] }
     ];
 
-    // Custom word generation with strategic letter placement
+    // Enhanced custom word generation with randomized letter placement
     function generateCustomWord() {
       const selected = wordTemplates[crypto.randomInt(0, wordTemplates.length)];
+      const word = selected.word.toLowerCase();
+      const requiredLetters = [...new Set(selected.requiredLetters)];
+      
+      // Create a randomized word with correct letters and additional random letters
+      const randomLength = Math.max(word.length + 2, word.length * 2);
+      const randomLetters = 'abcdefghijklmnopqrstuvwxyz'.split('').filter(l => !word.includes(l));
+      
+      let randomizedWord = '';
+      let currentWordIndex = 0;
+      
+      for (let i = 0; i < randomLength; i++) {
+        if (Math.random() < 0.4 && currentWordIndex < word.length) {
+          // Add a correct letter
+          randomizedWord += word[currentWordIndex];
+          currentWordIndex++;
+        } else {
+          // Add a random letter
+          const randomLetter = randomLetters[crypto.randomInt(0, randomLetters.length)];
+          randomizedWord += randomLetter;
+        }
+      }
+      
+      // Ensure the original word is fully included
+      while (currentWordIndex < word.length) {
+        randomizedWord += word[currentWordIndex];
+        currentWordIndex++;
+      }
+      
       return {
-        word: selected.word.toLowerCase(),
-        requiredLetters: [...new Set(selected.requiredLetters)] // Remove duplicates
+        word: word,
+        randomizedWord: randomizedWord,
+        requiredLetters: requiredLetters
       };
     }
 
     // Initialize game state
     const gameData = generateCustomWord();
     const word = gameData.word;
+    const randomizedWord = gameData.randomizedWord;
     const requiredLetters = gameData.requiredLetters;
     const guessedLetters = new Set();
     let remainingAttempts = 6;
@@ -94,15 +124,18 @@ module.exports = {
       ];
     }
 
-    // Word display (unchanged)
+    // Word display with randomized letters
     function getWordDisplay() {
-      return word
+      return randomizedWord
         .split('')
-        .map(letter => guessedLetters.has(letter) ? letter : '_')
+        .map(letter => 
+          // Only reveal the original word letters if they've been guessed
+          word.includes(letter) && guessedLetters.has(letter) ? letter : '_'
+        )
         .join(' ');
     }
 
-    // Start game (unchanged)
+    // Start game
     async function startGame() {
       const gameMessage = await bot.sendMessage(chatId, 
         `Hangman Game\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}`, 
@@ -115,7 +148,7 @@ module.exports = {
       return gameMessage;
     }
 
-    // Update game message (unchanged)
+    // Update game message
     async function updateGameMessage(gameMessage) {
       await bot.editMessageText(
         `Hangman Game\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}\n\n` +
@@ -131,7 +164,7 @@ module.exports = {
       );
     }
 
-    // Game logic handler (unchanged)
+    // Game logic handler
     async function handleGuess(query, gameMessage) {
       const letter = query.data.toLowerCase();
 
