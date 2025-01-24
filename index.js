@@ -195,8 +195,7 @@ class LuminaBot {
     if (UPTIME_URL) {
       try {
         await axios.get(UPTIME_URL);
-        console.log('Pinged uptime URL successfully');
-      }       
+        console.log('Pinged uptime URL successfully');     
       }
     }
   }
