@@ -192,12 +192,12 @@ class LuminaBot {
   }
 
   async pingUptimeUrl() {
-    if (UPTIME_URL) {
-      try {
-        await axios.get(UPTIME_URL);
-        console.log('Pinged uptime URL successfully');     
-      }
+  if (UPTIME_URL) {
+    try {
+      await axios.get(UPTIME_URL);
+    } catch (error) {
     }
+  }
   }
 
   startAutoLeaveCheck() {
