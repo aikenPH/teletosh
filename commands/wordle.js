@@ -6,100 +6,114 @@ const words = [
   "paper", "quick", "smile", "table", "unity", "vivid", "whale", "yield", "arrow", "brave",
   "coral", "diary", "elite", "frost", "gamer", "heart", "layer", "magic", "noble", "omega",
   "pearl", "quest", "steam", "train", "urban", "valve", "width", "alpha", "blaze", "delta",
-  "focus", "glide", "hunch", "icing", "karma", "lunar", "maple", "nerve", "pulse", "ridge",
-  "surge", "trend", "ultra", "wave", "zappy", "agile", "brisk", "cargo", "enter", "grasp",
-  "hoist", "imply", "jumbo", "knack", "lever", "midst", "notch", "olive", "prime", "relay"
-].map(word => word.toLowerCase()); // Ensure all words are lowercase
+  "focus", "glide", "hunch", "icing", "karma", "lunar", "maple", "nerve", "pulse", "ridge"
+].map(word => word.toLowerCase());
+
+const activeGames = new Map();
 
 module.exports = {
   name: "wordle",
-  description: "Play Wordle-like game",
+  description: "Play Wordle game",
   async execute(bot, msg, args, db) {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
-    const gameState = {
-      word: words[Math.floor(Math.random() * words.length)],
-      attempts: 0,
-      maxAttempts: 6,
-      guessedWords: new Set(),
-      gameOver: false
-    };
+    // Check if game already exists
+    if (activeGames.has(chatId)) {
+      await bot.sendMessage(chatId, "❌ A game is already in progress. End the current game first.");
+      return;
+    }
 
-    await bot.sendMessage(chatId, `🎮 Wordle Challenge! Guess the 5-letter word in ${gameState.maxAttempts} attempts. Good luck! 🚀`);
+    // Handle game start command
+    if (args[0] && args[0].toLowerCase() === 'start') {
+      const gameState = {
+        word: words[Math.floor(Math.random() * words.length)],
+        attempts: 0,
+        maxAttempts: 6,
+        guessedWords: new Set(),
+        gameOver: false
+      };
 
-    const gameHandler = async (msg) => {
-      // Ignore messages from other chats or users
-      if (msg.chat.id !== chatId || msg.from.id !== userId) return;
+      activeGames.set(chatId, gameState);
 
-      const guess = msg.text.toLowerCase().trim();
+      await bot.sendMessage(chatId, `🎮 Wordle Challenge! Guess the 5-letter word in ${gameState.maxAttempts} attempts. Good luck! 🚀`);
 
-      // Comprehensive input validation
-      if (guess.length !== 5) {
-        await bot.sendMessage(chatId, `❌ Your guess must be exactly 5 letters. You entered ${guess.length} letters.`);
-        return;
-      }
+      const gameHandler = async (msg) => {
+        if (msg.chat.id !== chatId) return;
 
-      if (!/^[a-z]+$/.test(guess)) {
-        await bot.sendMessage(chatId, "❌ Use only letters (A-Z) in your guess.");
-        return;
-      }
+        const gameState = activeGames.get(chatId);
+        if (!gameState || gameState.gameOver) return;
 
-      // Prevent duplicate guesses
-      if (gameState.guessedWords.has(guess)) {
-        await bot.sendMessage(chatId, "❌ You've already guessed this word!");
-        return;
-      }
+        const guess = msg.text.toLowerCase().trim();
 
-      gameState.attempts++;
-      gameState.guessedWords.add(guess);
-
-      try {
-        const result = evaluateGuess(guess, gameState.word);
-        
-        const resultMessage = `Attempt ${gameState.attempts}/${gameState.maxAttempts}: ${guess.toUpperCase()}\n${result.emoji}`;
-        await bot.sendMessage(chatId, resultMessage);
-
-        if (result.isCorrect) {
-          await bot.sendMessage(chatId, `🎉 Congratulations! You guessed the word in ${gameState.attempts} attempts! The word was ${gameState.word.toUpperCase()}.`);
-          endGame();
+        if (guess.toLowerCase() === 'end') {
+          await endGame(bot, chatId);
           return;
         }
 
-        if (gameState.attempts >= gameState.maxAttempts) {
-          await bot.sendMessage(chatId, `😔 Game over! The word was ${gameState.word.toUpperCase()}. Better luck next time!`);
-          endGame();
+        if (guess.length !== 5) {
+          await bot.sendMessage(chatId, `❌ Your guess must be exactly 5 letters. You entered ${guess.length} letters.`);
+          return;
         }
-      } catch (error) {
-        console.error("Game processing error:", error);
-        await bot.sendMessage(chatId, "🤖 Game error occurred.");
-        endGame();
-      }
-    };
 
-    const listenerId = bot.onText(/^[a-z]{5}$/i, gameHandler);
+        if (!/^[a-z]+$/.test(guess)) {
+          await bot.sendMessage(chatId, "❌ Use only letters (A-Z) in your guess.");
+          return;
+        }
 
-    function endGame() {
-      bot.removeListener('text', listenerId);
-      gameState.gameOver = true;
+        gameState.attempts++;
+
+        try {
+          const result = evaluateGuess(guess, gameState.word);
+          
+          const resultMessage = `Attempt ${gameState.attempts}/${gameState.maxAttempts}: ${guess.toUpperCase()}\n${result.emoji}`;
+          await bot.sendMessage(chatId, resultMessage);
+
+          if (result.isCorrect) {
+            await bot.sendMessage(chatId, `🎉 Congratulations! You guessed the word in ${gameState.attempts} attempts! The word was ${gameState.word.toUpperCase()}.`);
+            await endGame(bot, chatId);
+            return;
+          }
+
+          if (gameState.attempts >= gameState.maxAttempts) {
+            await bot.sendMessage(chatId, `😔 Game over! The word was ${gameState.word.toUpperCase()}. Better luck next time!`);
+            await endGame(bot, chatId);
+          }
+        } catch (error) {
+          console.error("Game processing error:", error);
+          await bot.sendMessage(chatId, "🤖 Game error occurred.");
+          await endGame(bot, chatId);
+        }
+      };
+
+      bot.on('text', gameHandler);
+    } else {
+      await bot.sendMessage(chatId, "🎮 How to play Wordle:\n" +
+        "1. Type '/wordle start' to begin\n" +
+        "2. Guess a 5-letter word\n" +
+        "3. 🟩 Green: Correct letter, correct position\n" +
+        "4. 🟨 Yellow: Correct letter, wrong position\n" +
+        "5. ⬜ White: Letter not in the word\n" +
+        "6. Type 'end' to stop the game\n" +
+        "You have 6 attempts to guess the word!");
     }
-
-    // 10-minute timeout
-    const gameTimeout = setTimeout(async () => {
-      if (!gameState.gameOver) {
-        await bot.sendMessage(chatId, `⏰ Game timed out! The word was ${gameState.word.toUpperCase()}.`);
-        endGame();
-      }
-    }, 10 * 60 * 1000);
   }
 };
+
+async function endGame(bot, chatId) {
+  const gameState = activeGames.get(chatId);
+  if (gameState) {
+    gameState.gameOver = true;
+    activeGames.delete(chatId);
+  }
+  bot.removeAllListeners('text');
+}
 
 function evaluateGuess(guess, word) {
   const result = new Array(5).fill('⬜');
   const wordLetters = word.split('');
   const guessLetters = guess.split('');
 
-  // First pass: mark correct positions
   for (let i = 0; i < 5; i++) {
     if (guessLetters[i] === word[i]) {
       result[i] = '🟩';
@@ -107,7 +121,6 @@ function evaluateGuess(guess, word) {
     }
   }
 
-  // Second pass: mark correct letters in wrong positions
   for (let i = 0; i < 5; i++) {
     if (result[i] === '⬜') {
       const letterIndex = wordLetters.indexOf(guessLetters[i]);
