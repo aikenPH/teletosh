@@ -16,7 +16,7 @@ const words = [
 
 module.exports = {
   name: "wordle",
-  description: "Play a Wordle-like game with multiple features",
+  description: "Play an advanced Wordle-like game with multiple features",
   async execute(bot, msg, args, db) {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -38,10 +38,20 @@ module.exports = {
     const gameHandler = async (msg) => {
       if (msg.chat.id !== chatId || msg.from.id !== userId) return;
 
-      const guess = msg.text.toLowerCase();
+      const guess = msg.text.toLowerCase().trim();
 
-      if (!isValidGuess(guess)) {
-        await bot.sendMessage(chatId, "❌ Oops! Please enter a valid 5-letter word.");
+      if (guess.length !== 5) {
+        await bot.sendMessage(chatId, `❌ Oops! Your guess must be exactly 5 letters long. You entered ${guess.length} letters.`);
+        return;
+      }
+
+      if (!/^[a-z]+$/.test(guess)) {
+        await bot.sendMessage(chatId, "❌ Oops! Please use only letters (A-Z) in your guess.");
+        return;
+      }
+
+      if (!words.includes(guess)) {
+        await bot.sendMessage(chatId, "❌ Hmm, that word is not in my dictionary. Try another 5-letter word!");
         return;
       }
 
@@ -87,10 +97,6 @@ module.exports = {
     }, 10 * 60 * 1000);
   }
 };
-
-function isValidGuess(guess) {
-  return /^[a-zA-Z]{5}$/.test(guess) && words.includes(guess);
-}
 
 function evaluateGuess(guess, gameState) {
   const word = gameState.word;
