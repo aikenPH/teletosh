@@ -15,6 +15,7 @@ const Database = require('./utils/database');
 const config = require('./config');
 const OwnerHandler = require('./handlers/ownerHandler');
 
+const PORT = process.env.PORT || 3000;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 const UPTIME_URL = process.env.UPTIME_URL;
 
@@ -53,11 +54,10 @@ class LuminaBot {
 
       const app = express();
       app.use(express.json());
-      app.use(express.static(path.join(__dirname, 'public')));
 
       this.bot = new TelegramBot(config.BOT_TOKEN, {
         webHook: {
-          port: process.env.PORT || 443,
+          port: PORT,
           host: '0.0.0.0'
         }
       });
@@ -72,38 +72,25 @@ class LuminaBot {
       app.get('/health', (req, res) => {
         res.status(200).json({
           status: 'healthy',
-          botName: this.botInfo.name,
-          version: this.botInfo.version,
           timestamp: new Date().toISOString()
         });
       });
 
-      app.get("/", (req, res) => {
-        res.sendFile(path.join(__dirname, "public", "index.html"));
-      });
-
       app.get('/keep-alive', (req, res) => {
-        res.status(200).json({ 
-          status: 'Bot is alive', 
-          botName: this.botInfo.name,
-          timestamp: new Date().toISOString() 
-        });
+        res.status(200).json({ status: 'Bot is alive', timestamp: new Date().toISOString() });
       });
 
-      // Start the server
-      const server = app.listen(process.env.PORT || 443, '0.0.0.0', async () => {
-        const botInfo = await this.bot.getMe();
-        this.bot.botInfo = botInfo;
-        console.log(`Bot initialized: @${botInfo.username}`);
-        console.log(`Server running on port ${server.address().port}`);
-      });
+      const botInfo = await this.bot.getMe();
+      this.bot.botInfo = botInfo;
+      console.log(`Bot initialized: @${botInfo.username}`);
+      console.log(`Webhook server running on port ${PORT}`);
 
       await this.initializeComponents();
 
       this.startAutoLeaveCheck();
 
       if (UPTIME_URL) {
-        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000);
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // Ping every 5 minutes
         console.log('Uptime pinger initialized');
       }
 
@@ -209,8 +196,7 @@ class LuminaBot {
       try {
         await axios.get(UPTIME_URL);
         console.log('Pinged uptime URL successfully');
-      } catch (error) {
-        console.error('Error pinging uptime URL:', error.message);
+      }       
       }
     }
   }
@@ -220,7 +206,6 @@ class LuminaBot {
   }
 }
 
-// Global error handling
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
