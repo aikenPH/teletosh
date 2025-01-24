@@ -2,108 +2,76 @@ const crypto = require('crypto');
 
 module.exports = {
   name: "hangman",
-  description: "Comprehensive Hangman Game with Full Alphabet",
+  description: "Hangman Game with A-U Letters and Strategic Word Generation",
   
   async execute(bot, msg, args, db) {
     const chatId = msg.chat.id;
     
-    // Expanded word list with more variety
-    const words = {
-      easy: ["cat", "dog", "bird", "fish", "tree", "sun", "car"],
-      medium: ["python", "coding", "robot", "music", "dance", "game", "web"],
-      hard: ["javascript", "algorithm", "quantum", "galaxy", "complex", "network", "system"]
-    };
+    // Custom word generation with strategic letter placement
+    function generateCustomWord() {
+      const wordTemplates = [
+        { word: "python", requiredLetters: ['p', 'y', 't', 'h', 'o', 'n'] },
+        { word: "robot", requiredLetters: ['r', 'o', 'b', 't'] },
+        { word: "code", requiredLetters: ['c', 'o', 'd', 'e'] }
+      ];
 
-    // Secure random word selection
-    function secureRandomWord(difficulty = 'medium') {
-      const selectedWords = words[difficulty];
-      const randomIndex = crypto.randomInt(0, selectedWords.length);
-      return selectedWords[randomIndex].toLowerCase();
+      const selected = wordTemplates[crypto.randomInt(0, wordTemplates.length)];
+      return {
+        word: selected.word.toLowerCase(),
+        requiredLetters: selected.requiredLetters
+      };
     }
 
     // Initialize game state
-    const word = secureRandomWord();
+    const gameData = generateCustomWord();
+    const word = gameData.word;
+    const requiredLetters = gameData.requiredLetters;
     const guessedLetters = new Set();
     let remainingAttempts = 6;
 
-    // Enhanced hangman display with more spacing
+    // Hangman display
     function getHangmanDisplay() {
       const hangmanStages = [
-        "+---+       \n" +
-        "|   |       \n" +
-        "            \n" +
-        "            \n" +
-        "            \n" +
-        "            \n" +
-        "=========",
-        
-        "+---+       \n" +
-        "|   |       \n" +
-        "O   |       \n" +
-        "            \n" +
-        "            \n" +
-        "            \n" +
-        "=========",
-        
-        "+---+       \n" +
-        "|   |       \n" +
-        "O   |       \n" +
-        "|   |       \n" +
-        "            \n" +
-        "            \n" +
-        "=========",
-        
-        "+---+       \n" +
-        "|   |       \n" +
-        "O   |       \n" +
-        "/|  |       \n" +
-        "            \n" +
-        "            \n" +
-        "=========",
-        
-        "+---+       \n" +
-        "|   |       \n" +
-        "O   |       \n" +
-        "/|\\|       \n" +
-        "            \n" +
-        "            \n" +
-        "=========",
-        
-        "+---+       \n" +
-        "|   |       \n" +
-        "O   |       \n" +
-        "/|\\|       \n" +
-        "/   |       \n" +
-        "            \n" +
-        "=========",
-        
-        "+---+       \n" +
-        "|   |       \n" +
-        "O   |       \n" +
-        "/|\\|       \n" +
-        "/ \\|       \n" +
-        "            \n" +
-        "=========",
+        "  +---+     \n  |   |     \n      |     \n      |     \n      |     \n      |     \n=========",
+        "  +---+     \n  |   |     \n  O   |     \n      |     \n      |     \n      |     \n=========",
+        "  +---+     \n  |   |     \n  O   |     \n  |   |     \n      |     \n      |     \n=========",
+        "  +---+     \n  |   |     \n  O   |     \n /|   |     \n      |     \n      |     \n=========",
+        "  +---+     \n  |   |     \n  O   |     \n /|\\  |     \n      |     \n      |     \n=========",
+        "  +---+     \n  |   |     \n  O   |     \n /|\\  |     \n /    |     \n      |     \n=========",
+        "  +---+     \n  |   |     \n  O   |     \n /|\\  |     \n / \\  |     \n      |     \n=========",
       ];
       return hangmanStages[6 - remainingAttempts];
     }
 
-    // Create full A-Z keyboard
-    function createFullKeyboard() {
-      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    // Generate keyboard with A-U letters and strategic placement
+    function createCustomKeyboard() {
+      const validLetters = 'abcdefghijklmnopqrstuvwxyz'
+        .split('')
+        .filter(letter => letter <= 'u');
+
+      // Ensure required letters are included
+      const keyboardLetters = [
+        ...new Set([...requiredLetters, ...validLetters])
+      ].filter(letter => letter <= 'u');
+
+      // Shuffle letters while keeping required letters
+      const shuffledLetters = keyboardLetters
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 16);
+
       return [
-        alphabet.slice(0, 13).map(letter => ({
-          text: guessedLetters.has(letter.toLowerCase()) ? '✓' : letter,
-          callback_data: letter.toLowerCase()
+        shuffledLetters.slice(0, 8).map(letter => ({
+          text: guessedLetters.has(letter) ? '✓' : letter.toUpperCase(),
+          callback_data: letter
         })),
-        alphabet.slice(13).map(letter => ({
-          text: guessedLetters.has(letter.toLowerCase()) ? '✓' : letter,
-          callback_data: letter.toLowerCase()
+        shuffledLetters.slice(8).map(letter => ({
+          text: guessedLetters.has(letter) ? '✓' : letter.toUpperCase(),
+          callback_data: letter
         }))
       ];
     }
 
-    // Word display function
+    // Word display
     function getWordDisplay() {
       return word
         .split('')
@@ -111,22 +79,13 @@ module.exports = {
         .join(' ');
     }
 
-    // Game start instructions
-    function getGameInstructions() {
-      return "🎮 Hangman Game Instructions:\n" +
-             "• Guess the hidden word letter by letter\n" +
-             "• You have 6 incorrect attempts\n" +
-             "• Click on letters to guess\n" +
-             "• Try to save the hanging stick figure! 🕹️";
-    }
-
-    // Send initial game message
+    // Start game
     async function startGame() {
       const gameMessage = await bot.sendMessage(chatId, 
-        `${getGameInstructions()}\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}`, 
+        `Hangman Game\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}`, 
         {
           reply_markup: {
-            inline_keyboard: createFullKeyboard()
+            inline_keyboard: createCustomKeyboard()
           }
         }
       );
@@ -135,32 +94,27 @@ module.exports = {
 
     // Update game message
     async function updateGameMessage(gameMessage) {
-      try {
-        await bot.editMessageText(
-          `Hangman Game\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}\n\n` +
-          `Guessed Letters: ${Array.from(guessedLetters).join(', ')}\n` +
-          `Remaining Attempts: ${remainingAttempts}`,
-          {
-            chat_id: chatId,
-            message_id: gameMessage.message_id,
-            reply_markup: {
-              inline_keyboard: createFullKeyboard()
-            }
+      await bot.editMessageText(
+        `Hangman Game\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}\n\n` +
+        `Guessed Letters: ${Array.from(guessedLetters).join(', ')}\n` +
+        `Remaining Attempts: ${remainingAttempts}`,
+        {
+          chat_id: chatId,
+          message_id: gameMessage.message_id,
+          reply_markup: {
+            inline_keyboard: createCustomKeyboard()
           }
-        );
-      } catch (error) {
-        console.error("Message update error:", error);
-      }
+        }
+      );
     }
 
     // Game logic handler
     async function handleGuess(query, gameMessage) {
       const letter = query.data.toLowerCase();
 
-      // Prevent duplicate guesses
       if (guessedLetters.has(letter)) {
         await bot.answerCallbackQuery(query.id, {
-          text: "You've already guessed this letter!",
+          text: "Already guessed this letter!",
           show_alert: true
         });
         return true;
@@ -183,14 +137,13 @@ module.exports = {
 
       await updateGameMessage(gameMessage);
 
-      // Check game end conditions
       if (remainingAttempts === 0) {
-        await bot.sendMessage(chatId, `❌ Game Over! The word was: ${word.toUpperCase()}`);
+        await bot.sendMessage(chatId, `Game Over! The word was: ${word.toUpperCase()}`);
         return false;
       }
 
       if (!getWordDisplay().includes('_')) {
-        await bot.sendMessage(chatId, `🎉 Congratulations! You guessed the word: ${word.toUpperCase()}`);
+        await bot.sendMessage(chatId, `Congratulations! You guessed the word: ${word.toUpperCase()}`);
         return false;
       }
 
@@ -200,7 +153,6 @@ module.exports = {
     // Main game execution
     const gameMessage = await startGame();
 
-    // Event listener for letter guesses
     bot.on('callback_query', async (query) => {
       if (query.message.message_id !== gameMessage.message_id) return;
       
