@@ -4,8 +4,11 @@ module.exports = {
   name: 'chatgpt',
   description: 'Interact with AI assistant',
   async execute(bot, msg, args) {
+    const chatId = msg.chat.id;
+    const messageId = msg.message_id;
+
     if (args.length < 1) {
-      return bot.sendMessage(msg.chat.id, '❌ Please provide a message. Usage: /chatgpt <your message>');
+      return bot.sendMessage(chatId, '❌ Please provide a message. Usage: /chatgpt <your message>');
     }
 
     const query = args.join(' ');
@@ -19,33 +22,42 @@ module.exports = {
     ];
 
     try {
-      await bot.sendChatAction(msg.chat.id, 'typing');
+      await bot.sendChatAction(chatId, 'typing');
 
       const response = await axios.get('https://myapi-2f5b.onrender.com/aichat', {
-        params: { query: query }
+        params: { query: query },
+        timeout: 15000
       });
 
       const aiResponse = response.data.response;
 
-      await bot.sendMessage(msg.chat.id, aiResponse || fallbackResponses[0], {
-        reply_to_message_id: msg.message_id
+      const formattedResponse = aiResponse.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `\`\`\`${lang || ''}\n${code}\n\`\`\``;
       });
+
+      const sendOptions = {
+        reply_to_message_id: messageId,
+        parse_mode: 'Markdown'
+      };
+
+      await bot.sendMessage(chatId, formattedResponse || fallbackResponses[0], sendOptions);
 
     } catch (error) {
       console.error('ChatGPT API Error:', error);
 
       const fallbackMessage = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
 
-      if (error.response) {
-        console.error('Error:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-      }
+      const errorDetails = error.response 
+        ? `Status: ${error.response.status}\nDetails: ${JSON.stringify(error.response.data)}` 
+        : 'Network or timeout error';
 
-      await bot.sendMessage(msg.chat.id, fallbackMessage, {
-        reply_to_message_id: msg.message_id
-      });
+      console.error('Detailed Error:', errorDetails);
+
+      const sendOptions = {
+        reply_to_message_id: messageId
+      };
+
+      await bot.sendMessage(chatId, fallbackMessage, sendOptions);
     }
   }
 };
