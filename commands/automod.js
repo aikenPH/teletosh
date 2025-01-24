@@ -1,55 +1,85 @@
 module.exports = {
   name: "automod",
-  description: "Group auto-moderation system",
+  description: "Enhanced group auto-moderation system",
   execute(bot, msg) {
+    // Track group-specific automod status
+    const groupAutomodStatus = new Map();
     const warningTracker = new Map();
+    
     const bannedWords = [
-      // Vulgar words and offensive language
+      // Comprehensive list of offensive terms
       "fuck", "shit", "bitch", "cunt", 
       "asshole", "dickhead", "motherfucker", 
       "whore", "slut", "retard", 
-      // Racial slurs (partially masked)
       "nigger", "chink", "spic", 
-      // Offensive terms
-      "idiot", "moron", "dumbass"
+      "idiot", "moron", "dumbass",
+      // Add more variations and common misspellings
+      "f*ck", "f**k", "sh*t", 
+      "b*tch", "c*nt"
     ];
 
-    bot.onText(/^\/automod (on|off)$/, async (message, match) => {
+    // Regex to handle on/off command with group-specific tracking
+    bot.onText(/^\/automod (on|off)$/, async (message) => {
       const chatId = message.chat.id;
       const userId = message.from.id;
 
-      const chatMember = await bot.getChatMember(chatId, userId);
-      const isAdmin = ['administrator', 'creator'].includes(chatMember.status);
+      try {
+        // Verify admin status
+        const chatMember = await bot.getChatMember(chatId, userId);
+        const isAdmin = ['administrator', 'creator'].includes(chatMember.status);
 
-      if (!isAdmin) {
-        return bot.sendMessage(chatId, "Only admins can toggle auto-moderation.");
+        if (!isAdmin) {
+          return bot.sendMessage(chatId, "❌ Only admins can manage auto-moderation.");
+        }
+
+        // Toggle group's automod status
+        const newStatus = message.text.includes(" on");
+        groupAutomodStatus.set(chatId, newStatus);
+
+        // Send confirmation with detailed message
+        const statusMessage = newStatus 
+          ? "🛡️ Auto-moderation ENABLED. Inappropriate messages will be monitored."
+          : "🔓 Auto-moderation DISABLED. Monitoring suspended.";
+
+        bot.sendMessage(chatId, statusMessage);
+
+      } catch (error) {
+        console.error("Automod toggle error:", error);
+        bot.sendMessage(chatId, "❌ Failed to toggle auto-moderation. Please try again.");
       }
-
-      bot.sendMessage(chatId, `Auto-moderation is now ${match[1]}`);
     });
 
+    // Message monitoring
     bot.on("message", async (message) => {
       const chatId = message.chat.id;
       const userId = message.from.id;
       const username = message.from.username || message.from.first_name;
 
+      // Check if automod is enabled for this group
+      const isAutomodActive = groupAutomodStatus.get(chatId) || false;
+      if (!isAutomodActive) return;
+
+      // Advanced banned word detection with regex for variations
       const containsBannedWord = bannedWords.some(word => 
-        message.text.toLowerCase().includes(word.toLowerCase())
+        new RegExp(`\\b${word.replace(/\*/g, '\\*')}\\b`, 'gi').test(message.text)
       );
 
       if (containsBannedWord) {
-        const currentWarnings = (warningTracker.get(userId) || 0) + 1;
-        warningTracker.set(userId, currentWarnings);
+        // Initialize or increment warning count
+        const currentWarnings = (warningTracker.get(`${chatId}:${userId}`) || 0) + 1;
+        warningTracker.set(`${chatId}:${userId}`, currentWarnings);
 
         try {
           if (currentWarnings <= 3) {
+            // Graduated warning system
             await bot.sendMessage(chatId, 
-              `⚠️ Warning ${currentWarnings}/3 for @${username}: Inappropriate language detected!`
+              `⚠️ Warning ${currentWarnings}/3 for @${username}: Inappropriate language detected! Next violation results in mute.`
             );
           } else {
-  
+            // Mute for escalating duration
+            const muteDuration = currentWarnings * 3600; // Increasing mute time
             await bot.restrictChatMember(chatId, userId, {
-              until_date: Math.floor(Date.now() / 1000) + 3600,
+              until_date: Math.floor(Date.now() / 1000) + muteDuration,
               permissions: {
                 can_send_messages: false,
                 can_send_media_messages: false,
@@ -59,13 +89,13 @@ module.exports = {
               }
             });
 
-             await bot.deleteMessage(chatId, message.message_id);
-
+            await bot.deleteMessage(chatId, message.message_id);
             await bot.sendMessage(chatId, 
-              `🔇 @${username} has been muted for 1 hour due to repeated inappropriate language.`
+              `🔇 @${username} muted for ${muteDuration/3600} hour(s) due to repeated inappropriate language.`
             );
 
-            warningTracker.set(userId, 0);
+            // Reset warnings after mute
+            warningTracker.set(`${chatId}:${userId}`, 0);
           }
         } catch (error) {
           console.error("Moderation error:", error);
