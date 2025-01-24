@@ -19,9 +19,7 @@ module.exports = {
       minePositions.push({x, y});
     }
 
-    function getAdjacentMines(x, y) {
-      const count = 0;
-      for (let dx = -1;function getAdjacentMines(x, y) {
+    const getAdjacentMines = (x, y) => {
       let count = 0;
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
@@ -35,9 +33,9 @@ module.exports = {
         }
       }
       return count;
-    }
+    };
 
-    function revealCell(x, y) {
+    const revealCell = (x, y) => {
       if (minePositions.some(pos => pos.x === x && pos.y === y)) {
         board[y][x] = '💥';
         return false;
@@ -46,11 +44,11 @@ module.exports = {
         board[y][x] = count > 0 ? count.toString() : '⬜';
         return true;
       }
-    }
+    };
 
-    function displayBoard() {
+    const displayBoard = () => {
       return board.map(row => row.join('')).join('\n');
-    }
+    };
 
     const gameMessage = await bot.sendMessage(chatId, displayBoard());
 
@@ -93,4 +91,3 @@ module.exports = {
     await bot.sendMessage(chatId, 'Enter coordinates to reveal a cell (e.g., "2,3")');
   }
 };
-
