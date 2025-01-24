@@ -23,13 +23,18 @@ module.exports = {
     const formattedDate = timestamp.format("ddd, MMM D YYYY");
     const formattedTime = timestamp.format("h:mm A");
    
-    const htmlFeedbackEntry = `<b>Date:</b> ${formattedDate}\n<b>Time:</b> ${formattedTime}\n\n<b>User:</b> <i>${username}</i>\n<b>ID:</b> <code>${userId}</code>\n<b>Feedback:</b> <i>${feedback}</i>`;
+    const markdownFeedbackEntry = `*Date:* ${formattedDate}
+*Time:* ${formattedTime}
+
+*User:* \`${username}\`
+*ID:* \`${userId}\`
+*Feedback:* _${feedback}_`;
    
     try {
       const ownerId = process.env.OWNER_ID;
       if (ownerId) {
-        await bot.sendMessage(ownerId, `New feedback received:\n\n${htmlFeedbackEntry}`, { 
-          parse_mode: 'HTML',
+        await bot.sendMessage(ownerId, `New feedback received:\n\n${markdownFeedbackEntry}`, { 
+          parse_mode: 'Markdown',
           disable_web_page_preview: true
         });
       }
