@@ -25,8 +25,7 @@ module.exports = {
       await bot.sendChatAction(chatId, 'typing');
 
       const response = await axios.get('https://myapi-2f5b.onrender.com/aichat', {
-        params: { query: query },
-        timeout: 15000
+        params: { query: query }
       });
 
       const aiResponse = response.data.response;
