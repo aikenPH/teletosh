@@ -22,15 +22,21 @@ module.exports = {
     const timestamp = moment().tz("Asia/Manila");
     const formattedDate = timestamp.format("ddd, MMM D YYYY");
     const formattedTime = timestamp.format("h:mm A");
-    const isoTimestamp = timestamp.toISOString();
    
-    const htmlFeedbackEntry = `<b>Date:</b> ${formattedDate}\n<b>Time:<b> ${formattedTime}\n<b>User:</b> <i>${username}</i>\n<b>ID:</b> <code>${userId}</code>
-<b>Feedback:</b> <i>${feedback}</i>\n\n`;
+    const markdownFeedbackEntry = `*Date:* ${formattedDate}
+*Time:* ${formattedTime}
+
+*User:* \`${username}\`
+*ID:* \`${userId}\`
+*Feedback:* _${feedback}_`;
    
     try {
       const ownerId = process.env.OWNER_ID;
       if (ownerId) {
-        await bot.sendMessage(ownerId, `New feedback received:\n\n${htmlFeedbackEntry}`, { parse_mode: 'HTML' });
+        await bot.sendMessage(ownerId, `New feedback received:\n\n${markdownFeedbackEntry}`, { 
+          parse_mode: 'Markdown',
+          disable_web_page_preview: true
+        });
       }
      
       await bot.sendMessage(
