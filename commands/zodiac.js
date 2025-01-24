@@ -754,11 +754,10 @@ class ZodiacCompatibility {
     return `
 🌟 Zodiac Compatibility Report 🌟
 
-${sign1} ${sign1Details.symbol} ♥️ ${sign2} ${sign2Details.symbol}
+${sign1} ${sign1Details.symbol} ♡ ${sign2} ${sign2Details.symbol}
 
 📊 Compatibility Score: ${compatibility.score}%
-
-💖 Compatibility: ${compatibility.compatibility}
+- Compatibility: ${compatibility.compatibility}
 
 🔮 Insights:
 • Emotional Connection: ${compatibility.emotional_connection}
