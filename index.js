@@ -5,10 +5,6 @@ const Promise = require('bluebird');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
-const http = require('http');
-const net = require('net');
-const cors = require('cors');
-
 const CommandHandler = require('./handlers/commandHandler');
 const ModerationTools = require('./handlers/moderationTools');
 const EventReminder = require('./handlers/eventReminder');
@@ -19,10 +15,23 @@ const Database = require('./utils/database');
 const config = require('./config');
 const OwnerHandler = require('./handlers/ownerHandler');
 
-// Dynamic port configuration
-const DEFAULT_PORT = parseInt(process.env.PORT || 3000);
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 const UPTIME_URL = process.env.UPTIME_URL;
+
+const botBanner = `
+░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
+░█─── ░█─░█ ░█░█░█ ░█─ ░█░█░█ ░█▄▄█ 
+░█▄▄█ ─▀▄▄▀ ░█──░█ ▄█▄ ░█──▀█ ░█─░█
+
+Bot Name: Lumina
+Description: Intelligent Telegram Bot
+Author: JohnDev19
+Version: 1.1.0
+`;
+
+Promise.config({
+  cancellation: true
+});
 
 class LuminaBot {
   constructor() {
@@ -33,33 +42,7 @@ class LuminaBot {
       description: 'An intelligent and user-friendly Telegram bot'
     };
 
-    this.app = express();
-    this.server = null;
     this.initialize();
-  }
-
-  async findAvailablePort(startPort) {
-    return new Promise((resolve, reject) => {
-      const server = net.createServer();
-      
-      server.listen(startPort, '0.0.0.0', () => {
-        const port = server.address().port;
-        server.close(() => {
-          resolve(port);
-        });
-      });
-
-      server.on('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          // Try next port if current is in use
-          this.findAvailablePort(startPort + 1)
-            .then(resolve)
-            .catch(reject);
-        } else {
-          reject(err);
-        }
-      });
-    });
   }
 
   async initialize() {
@@ -68,71 +51,61 @@ class LuminaBot {
         throw new Error('Telegram Bot Token not provided. Please check your .env file.');
       }
 
-      // Find an available port
-      const PORT = await this.findAvailablePort(DEFAULT_PORT);
-      console.log(`Selected available port: ${PORT}`);
+      const app = express();
+      app.use(express.json());
+      app.use(express.static(path.join(__dirname, 'public')));
 
-      // Middleware setup
-      this.app.use(cors());
-      this.app.use(express.json());
-      this.app.use(express.urlencoded({ extended: true }));
-      this.app.use(express.static(path.join(__dirname, 'public')));
-
-      // Create HTTP server
-      this.server = http.createServer(this.app);
-
-      // Create Telegram bot instance
       this.bot = new TelegramBot(config.BOT_TOKEN, {
         webHook: {
-          port: PORT,
+          port: process.env.PORT || 443,
           host: '0.0.0.0'
         }
       });
 
-      // Set webhook
       await this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
 
-      // Webhook endpoint
-      this.app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
+      app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
         this.bot.processUpdate(req.body);
         res.sendStatus(200);
       });
 
-      // Health check endpoint
-      this.app.get('/health', (req, res) => {
+      app.get('/health', (req, res) => {
         res.status(200).json({
           status: 'healthy',
-          timestamp: new Date().toISOString(),
-          port: PORT,
-          botInfo: this.botInfo
+          botName: this.botInfo.name,
+          version: this.botInfo.version,
+          timestamp: new Date().toISOString()
         });
       });
 
-      // Root endpoint to serve index.html
-      this.app.get('/', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+      app.get("/", (req, res) => {
+        res.sendFile(path.join(__dirname, "public", "index.html"));
       });
 
-      // Keepalive endpoint
-      this.app.get('/keep-alive', (req, res) => {
+      app.get('/keep-alive', (req, res) => {
         res.status(200).json({ 
           status: 'Bot is alive', 
-          timestamp: new Date().toISOString(),
-          port: PORT,
-          version: this.botInfo.version
+          botName: this.botInfo.name,
+          timestamp: new Date().toISOString() 
         });
       });
 
-      // Start server
-      this.server.listen(PORT, '0.0.0.0', () => {
-        console.log(`Server running on port ${PORT}`);
+      // Start the server
+      const server = app.listen(process.env.PORT || 443, '0.0.0.0', async () => {
+        const botInfo = await this.bot.getMe();
+        this.bot.botInfo = botInfo;
+        console.log(`Bot initialized: @${botInfo.username}`);
+        console.log(`Server running on port ${server.address().port}`);
       });
 
-      // Initialize bot components
       await this.initializeComponents();
 
-      // Start periodic checks
-      this.startPeriodicTasks();
+      this.startAutoLeaveCheck();
+
+      if (UPTIME_URL) {
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000);
+        console.log('Uptime pinger initialized');
+      }
 
       console.log('All components initialized successfully');
     } catch (error) {
@@ -154,24 +127,63 @@ class LuminaBot {
     this.setupEventListeners();
     this.loadCommands();
     this.setupErrorHandling();
-  }
 
-  startPeriodicTasks() {
     this.eventReminder.startEventChecking();
-    
-    // Uptime pinger
-    if (UPTIME_URL) {
-      setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000);
-      console.log('Uptime pinger initialized');
-    }
-
-    // Auto-leave check
-    setInterval(() => this.groupManager.checkAutoLeave(), 60 * 60 * 1000);
   }
 
   setupEventListeners() {
-    // Event listener implementations remain the same as in previous version
-    // (Copying the entire previous setupEventListeners method here would make the response too long)
+    this.bot.on('message', async (msg) => {
+      try {
+        const text = msg.text || msg.caption;
+
+        if (text) {
+          await this.autoReactHandler.handleMessageReaction(msg);
+
+          if (text.startsWith('/setreminder')) {
+            const reminderModule = require('./commands/setreminder');
+            const args = text.split(' ').slice(1);
+            await reminderModule.execute(
+              this.bot, 
+              msg, 
+              args, 
+              this.db
+            );
+          } else if (text.startsWith('/')) {
+            await this.commandHandler.handleCommand(msg);
+          } else {
+            await this.automatedResponses.handleMessage(msg);
+          }
+        }
+      } catch (error) {
+        console.error('Error handling message:', error);
+      }
+    });
+
+    this.bot.on('new_chat_members', async (msg) => {
+      try {
+        await this.groupManager.handleNewMember(msg);
+      } catch (error) {
+        console.error('Error handling new member:', error);
+      }
+    });
+
+    this.bot.on('left_chat_member', async (msg) => {
+      try {
+        await this.groupManager.handleLeftMember(msg);
+      } catch (error) {
+        console.error('Error handling left member:', error);
+      }
+    });
+
+    this.bot.on('my_chat_member', async (chatMemberUpdated) => {
+      if (chatMemberUpdated.new_chat_member.status === 'member' && 
+          chatMemberUpdated.old_chat_member.status === 'left') {
+        await this.groupManager.joinGroup(chatMemberUpdated.chat.id);
+      } else if (chatMemberUpdated.new_chat_member.status === 'left' && 
+                 chatMemberUpdated.old_chat_member.status === 'member') {
+        await this.groupManager.leaveGroup(chatMemberUpdated.chat.id);
+      }
+    });
   }
 
   loadCommands() {
@@ -190,16 +202,6 @@ class LuminaBot {
     this.bot.on('error', (error) => {
       console.error('Bot Error:', error);
     });
-
-    // Add more robust error handling
-    process.on('uncaughtException', (error) => {
-      console.error('Uncaught Exception:', error);
-      // Optionally restart or log more details
-    });
-
-    process.on('unhandledRejection', (error) => {
-      console.error('Unhandled Rejection:', error);
-    });
   }
 
   async pingUptimeUrl() {
@@ -212,9 +214,23 @@ class LuminaBot {
       }
     }
   }
+
+  startAutoLeaveCheck() {
+    setInterval(() => this.groupManager.checkAutoLeave(), 60 * 60 * 1000); // Check every hour
+  }
 }
 
-// Initialize the bot
+// Global error handling
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
+});
+
+console.log(botBanner);
 const luminaBot = new LuminaBot();
+console.log('Lumina Bot is running...');
 
 module.exports = LuminaBot;
