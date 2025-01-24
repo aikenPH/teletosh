@@ -2,19 +2,19 @@ const crypto = require('crypto');
 
 module.exports = {
   name: "hangman",
-  description: "Hangman Game with Fixed Keyboard",
+  description: "Comprehensive Hangman Game with Full Alphabet",
   
   async execute(bot, msg, args, db) {
     const chatId = msg.chat.id;
     
-    // Predefined word list with varied difficulty
+    // Expanded word list with more variety
     const words = {
-      easy: ["cat", "dog", "bird", "fish", "tree"],
-      medium: ["python", "coding", "robot", "music", "dance"],
-      hard: ["javascript", "algorithm", "quantum", "galaxy", "complex"]
+      easy: ["cat", "dog", "bird", "fish", "tree", "sun", "car"],
+      medium: ["python", "coding", "robot", "music", "dance", "game", "web"],
+      hard: ["javascript", "algorithm", "quantum", "galaxy", "complex", "network", "system"]
     };
 
-    // Cryptographically secure random word selection
+    // Secure random word selection
     function secureRandomWord(difficulty = 'medium') {
       const selectedWords = words[difficulty];
       const randomIndex = crypto.randomInt(0, selectedWords.length);
@@ -25,38 +25,85 @@ module.exports = {
     const word = secureRandomWord();
     const guessedLetters = new Set();
     let remainingAttempts = 6;
-    let gameStatus = 'active';
 
-    // Enhanced hangman display with better spacing
+    // Enhanced hangman display with more spacing
     function getHangmanDisplay() {
       const hangmanStages = [
-        "  +---+     \n  |   |     \n      |     \n      |     \n      |     \n      |     \n=========",
-        "  +---+     \n  |   |     \n  O   |     \n      |     \n      |     \n      |     \n=========",
-        "  +---+     \n  |   |     \n  O   |     \n  |   |     \n      |     \n      |     \n=========",
-        "  +---+     \n  |   |     \n  O   |     \n /|   |     \n      |     \n      |     \n=========",
-        "  +---+     \n  |   |     \n  O   |     \n /|\\  |     \n      |     \n      |     \n=========",
-        "  +---+     \n  |   |     \n  O   |     \n /|\\  |     \n /    |     \n      |     \n=========",
-        "  +---+     \n  |   |     \n  O   |     \n /|\\  |     \n / \\  |     \n      |     \n=========",
+        "+---+       \n" +
+        "|   |       \n" +
+        "            \n" +
+        "            \n" +
+        "            \n" +
+        "            \n" +
+        "=========",
+        
+        "+---+       \n" +
+        "|   |       \n" +
+        "O   |       \n" +
+        "            \n" +
+        "            \n" +
+        "            \n" +
+        "=========",
+        
+        "+---+       \n" +
+        "|   |       \n" +
+        "O   |       \n" +
+        "|   |       \n" +
+        "            \n" +
+        "            \n" +
+        "=========",
+        
+        "+---+       \n" +
+        "|   |       \n" +
+        "O   |       \n" +
+        "/|  |       \n" +
+        "            \n" +
+        "            \n" +
+        "=========",
+        
+        "+---+       \n" +
+        "|   |       \n" +
+        "O   |       \n" +
+        "/|\\|       \n" +
+        "            \n" +
+        "            \n" +
+        "=========",
+        
+        "+---+       \n" +
+        "|   |       \n" +
+        "O   |       \n" +
+        "/|\\|       \n" +
+        "/   |       \n" +
+        "            \n" +
+        "=========",
+        
+        "+---+       \n" +
+        "|   |       \n" +
+        "O   |       \n" +
+        "/|\\|       \n" +
+        "/ \\|       \n" +
+        "            \n" +
+        "=========",
       ];
       return hangmanStages[6 - remainingAttempts];
     }
 
-    // Fixed keyboard layout
-    function createFixedKeyboard() {
-      const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    // Create full A-Z keyboard
+    function createFullKeyboard() {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       return [
         alphabet.slice(0, 13).map(letter => ({
-          text: guessedLetters.has(letter) ? '✓' : letter.toUpperCase(),
-          callback_data: letter
+          text: guessedLetters.has(letter.toLowerCase()) ? '✓' : letter,
+          callback_data: letter.toLowerCase()
         })),
         alphabet.slice(13).map(letter => ({
-          text: guessedLetters.has(letter) ? '✓' : letter.toUpperCase(),
-          callback_data: letter
+          text: guessedLetters.has(letter.toLowerCase()) ? '✓' : letter,
+          callback_data: letter.toLowerCase()
         }))
       ];
     }
 
-    // Word display with accurate guessing
+    // Word display function
     function getWordDisplay() {
       return word
         .split('')
@@ -79,7 +126,7 @@ module.exports = {
         `${getGameInstructions()}\n\n${getHangmanDisplay()}\n\n${getWordDisplay()}`, 
         {
           reply_markup: {
-            inline_keyboard: createFixedKeyboard()
+            inline_keyboard: createFullKeyboard()
           }
         }
       );
@@ -97,7 +144,7 @@ module.exports = {
             chat_id: chatId,
             message_id: gameMessage.message_id,
             reply_markup: {
-              inline_keyboard: createFixedKeyboard()
+              inline_keyboard: createFullKeyboard()
             }
           }
         );
