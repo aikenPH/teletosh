@@ -14,11 +14,11 @@ const AutoReactHandler = require('./handlers/autoReactHandler');
 const Database = require('./utils/database');
 const config = require('./config');
 const OwnerHandler = require('./handlers/ownerHandler');
+const cors = require('cors');
 
 const PORT = process.env.PORT || 3000;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 const UPTIME_URL = process.env.UPTIME_URL;
-const app = express();
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -44,6 +44,7 @@ class LuminaBot {
       description: 'An intelligent and user-friendly Telegram bot'
     };
 
+    this.app = express();
     this.initialize();
   }
 
@@ -53,9 +54,15 @@ class LuminaBot {
         throw new Error('Telegram Bot Token not provided. Please check your .env file.');
       }
 
-      const app = express();
-      app.use(express.json());
+      // Middleware setup
+      this.app.use(cors());
+      this.app.use(express.json());
+      this.app.use(express.urlencoded({ extended: true }));
+      
+      // Serve static files from public directory
+      this.app.use(express.static(path.join(__dirname, 'public')));
 
+      // Create Telegram bot instance
       this.bot = new TelegramBot(config.BOT_TOKEN, {
         webHook: {
           port: PORT,
@@ -63,39 +70,57 @@ class LuminaBot {
         }
       });
 
+      // Set webhook
       await this.bot.setWebHook(`${URL}/bot${config.BOT_TOKEN}`);
 
-      app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
+      // Webhook endpoint
+      this.app.post(`/bot${config.BOT_TOKEN}`, (req, res) => {
         this.bot.processUpdate(req.body);
         res.sendStatus(200);
       });
 
-      app.get('/health', (req, res) => {
+      // Health check endpoint
+      this.app.get('/health', (req, res) => {
         res.status(200).json({
           status: 'healthy',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          botInfo: this.botInfo
         });
       });
 
-      app.get("/", (req, res) => {
-        res.sendFile(path.join(__dirname, "public", "index.html"))
-      })
-
-      app.get('/keep-alive', (req, res) => {
-        res.status(200).json({ status: 'Bot is alive', timestamp: new Date().toISOString() });
+      // Root endpoint to serve index.html
+      this.app.get('/', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
       });
 
+      // Keepalive endpoint
+      this.app.get('/keep-alive', (req, res) => {
+        res.status(200).json({ 
+          status: 'Bot is alive', 
+          timestamp: new Date().toISOString(),
+          version: this.botInfo.version
+        });
+      });
+
+      // Start server
+      this.app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+
+      // Get bot info
       const botInfo = await this.bot.getMe();
       this.bot.botInfo = botInfo;
       console.log(`Bot initialized: @${botInfo.username}`);
-      console.log(`Webhook server running on port ${PORT}`);
 
+      // Initialize components
       await this.initializeComponents();
 
+      // Start auto-leave check
       this.startAutoLeaveCheck();
 
+      // Setup uptime pinger if URL is provided
       if (UPTIME_URL) {
-        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000); // Ping every 5 minutes
+        setInterval(() => this.pingUptimeUrl(), 5 * 60 * 1000);
         console.log('Uptime pinger initialized');
       }
 
@@ -208,10 +233,11 @@ class LuminaBot {
   }
 
   startAutoLeaveCheck() {
-    setInterval(() => this.groupManager.checkAutoLeave(), 60 * 60 * 1000); // Check every hour
+    setInterval(() => this.groupManager.checkAutoLeave(), 60 * 60 * 1000);
   }
 }
 
+// Global error handling
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
 });
