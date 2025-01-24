@@ -18,6 +18,7 @@ const OwnerHandler = require('./handlers/ownerHandler');
 const PORT = process.env.PORT || 3000;
 const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
 const UPTIME_URL = process.env.UPTIME_URL;
+const app = express();
 
 const botBanner = `
 ░█─── ░█─░█ ░█▀▄▀█ ▀█▀ ░█▄─░█ ─█▀▀█ 
@@ -76,13 +77,13 @@ class LuminaBot {
         });
       });
 
-      app.get('/keep-alive', (req, res) => {
-        res.status(200).json({ status: 'Bot is alive', timestamp: new Date().toISOString() });
-      });
-
       app.get("/", (req, res) => {
         res.sendFile(path.join(__dirname, "public", "index.html"))
       })
+
+      app.get('/keep-alive', (req, res) => {
+        res.status(200).json({ status: 'Bot is alive', timestamp: new Date().toISOString() });
+      });
 
       const botInfo = await this.bot.getMe();
       this.bot.botInfo = botInfo;
