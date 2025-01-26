@@ -23,16 +23,20 @@ class AutomatedResponses {
           response: () => this.sendThanks(chatId) 
         },
         { 
-          keywords: ['weather'], 
-          response: () => this.getWeather(chatId, text) 
-        },
-        { 
           keywords: ['joke'], 
           response: () => this.tellJoke(chatId) 
         },
         { 
-          keywords: ['fact'], 
-          response: () => this.tellFact(chatId) 
+          keywords: ['quote', 'inspire', 'motivation'], 
+          response: () => this.getInspirationalQuote(chatId) 
+        },
+        { 
+          keywords: ['movie', 'film', 'recommend'], 
+          response: () => this.recommendMovie(chatId) 
+        },
+        { 
+          keywords: ['love', 'romantic'], 
+          response: () => this.sendLoveQuote(chatId) 
         }
       ];
 
@@ -51,7 +55,9 @@ class AutomatedResponses {
     const greetings = [
       'Hello! How can I assist you today?',
       'Hi there! What can I help you with?',
-      'Greetings! Ready to chat?'
+      'Greetings! Ready to chat?',
+      'Welcome! I\'m here to brighten your day!',
+      'Hey! Excited to chat with you!'
     ];
     this.bot.sendMessage(chatId, greetings[Math.floor(Math.random() * greetings.length)]);
   }
@@ -60,103 +66,99 @@ class AutomatedResponses {
     const thankResponses = [
       "You're welcome! Always happy to help.",
       "No problem at all! That's what I'm here for.",
-      "Glad I could assist you today!"
+      "Glad I could assist you today!",
+      "Happy to help! Anything else I can do for you?",
+      "My pleasure! Spreading joy is my mission."
     ];
     this.bot.sendMessage(chatId, thankResponses[Math.floor(Math.random() * thankResponses.length)]);
   }
 
-  async getWeather(chatId, text) {
-    const cityMatch = text.match(/weather in (\w+)/i);
-    if (cityMatch) {
-      const city = cityMatch[1];
-      try {
-        const response = await axios.get('https://api.openweathermap.org/data/2.5/weather', {
-          params: {
-            q: city,
-            appid: process.env.OPENWEATHER_API_KEY,
-            units: 'metric'
-          }
-        });
-
-        const weatherData = response.data;
-        const weatherMessage = `
-🌦️ Current Weather in ${city.toUpperCase()}:
-🌡️ Temperature: ${weatherData.main.temp}°C
-☁️ Condition: ${weatherData.weather[0].description}
-💨 Wind Speed: ${weatherData.wind.speed} m/s
-        `;
-
-        this.bot.sendMessage(chatId, weatherMessage);
-      } catch (error) {
-        console.error('Weather Fetch Error:', error);
-        this.bot.sendMessage(chatId, `Sorry, I couldn't find weather information for ${city}. Please check the city name.`);
-      }
-    } else {
-      this.bot.sendMessage(chatId, "Please specify a city. For example, 'weather in London'.");
-    }
-  }
-
   async tellJoke(chatId) {
     try {
-      const [jokeResponse, gifResponse] = await Promise.all([
-        axios.get('https://official-joke-api.appspot.com/random_joke'),
-        axios.get('https://api.giphy.com/v1/gifs/random', {
-          params: {
-            api_key: process.env.GIPHY_API_KEY,
-            tag: 'laughing,funny',
-            rating: 'pg'
-          }
-        })
-      ]);
-
+      const jokeResponse = await axios.get('https://v2.jokeapi.dev/joke/Any?type=twopart');
       const joke = jokeResponse.data;
-      const gifUrl = gifResponse.data.data.images.downsized_medium.url;
 
       const jokeMessage = `
 😂 Joke Time! 
 
 ${joke.setup}
 
-${joke.punchline}
+${joke.delivery}
       `;
 
-      this.bot.sendAnimation(chatId, gifUrl, {
-        caption: jokeMessage
-      });
+      this.bot.sendMessage(chatId, jokeMessage);
     } catch (error) {
       console.error('Joke Fetch Error:', error);
       this.bot.sendMessage(chatId, "Why don't scientists trust atoms? Because they make up everything!");
     }
   }
 
-  async tellFact(chatId) {
+  async getInspirationalQuote(chatId) {
     try {
-      const [factResponse, gifResponse] = await Promise.all([
-        axios.get('https://uselessfacts.jsph.pl/random.json?language=en'),
-        axios.get('https://api.giphy.com/v1/gifs/random', {
-          params: {
-            api_key: process.env.GIPHY_API_KEY,
-            tag: 'surprised,mind blown',
-            rating: 'pg'
-          }
-        })
-      ]);
+      const quoteResponse = await axios.get('https://zenquotes.io/api/random');
+      const quote = quoteResponse.data[0];
 
-      const fact = factResponse.data.text;
-      const gifUrl = gifResponse.data.data.images.downsized_medium.url;
+      const quoteMessage = `
+💡 Inspirational Quote:
 
-      const factMessage = `
-🧠 Interesting Fact! 
-
-${fact}
+"${quote.q}"
+- ${quote.a}
       `;
 
-      this.bot.sendAnimation(chatId, gifUrl, {
-        caption: factMessage
-      });
+      this.bot.sendMessage(chatId, quoteMessage);
     } catch (error) {
-      console.error('Fact Fetch Error:', error);
-      this.bot.sendMessage(chatId, "Did you know that the shortest war in history lasted only 38 minutes?");
+      console.error('Quote Fetch Error:', error);
+      this.bot.sendMessage(chatId, "Believe you can and you're halfway there!");
+    }
+  }
+
+  async recommendMovie(chatId) {
+    try {
+      const movieResponse = await axios.get('https://raw.githubusercontent.com/prust/wikipedia-movie-data/master/movies.json');
+      const movies = movieResponse.data;
+      const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+
+      const movieMessage = `
+🎬 Movie Recommendation:
+
+Title: ${randomMovie.title}
+Year: ${randomMovie.year}
+Genres: ${randomMovie.genres ? randomMovie.genres.join(', ') : 'Not specified'}
+
+Sounds like an interesting watch!
+      `;
+
+      this.bot.sendMessage(chatId, movieMessage);
+    } catch (error) {
+      console.error('Movie Recommendation Error:', error);
+      this.bot.sendMessage(chatId, "The Shawshank Redemption - A classic movie about hope and friendship!");
+    }
+  }
+
+  async sendLoveQuote(chatId) {
+    try {
+      const quoteResponse = await axios.get('https://zenquotes.io/api/quotes');
+      const quotes = quoteResponse.data;
+      const loveQuotes = quotes.filter(quote => 
+        quote.q.toLowerCase().includes('love') || 
+        quote.a.toLowerCase().includes('love')
+      );
+
+      const selectedQuote = loveQuotes.length > 0 
+        ? loveQuotes[Math.floor(Math.random() * loveQuotes.length)]
+        : { q: "Love is a journey, not a destination.", a: "Unknown" };
+
+      const quoteMessage = `
+❤️ Love Quote:
+
+"${selectedQuote.q}"
+- ${selectedQuote.a}
+      `;
+
+      this.bot.sendMessage(chatId, quoteMessage);
+    } catch (error) {
+      console.error('Love Quote Fetch Error:', error);
+      this.bot.sendMessage(chatId, "Love is the greatest adventure of all!");
     }
   }
 }
