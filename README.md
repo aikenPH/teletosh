@@ -1,6 +1,7 @@
 # Lumina Bot
 
 ![Lumina Bot Logo](https://i.ibb.co/3YN5ggW/lumina.jpg)
+![Lumina](https://i.ibb.co/DCxTK2q/IMG-20250126-111106.jpg)
 
 Lumina is a Telegram bot assistant designed to provide intelligent interactions, automated responses, and versatile communication tools.
 
@@ -88,6 +89,30 @@ Lumina is a Telegram bot assistant designed to provide intelligent interactions,
    ```bash
    node index.js
    ```
+
+## 📜 Command Structure
+
+Lumina's commands follow a standardized structure:
+
+```javascript
+module.exports = {
+  name: 'commandName', // Unique command identifier
+  description: 'Command purpose', // Brief description of the command
+  owner: false, // Optional: Restrict to bot owner
+  execute: async (bot, msg, args) => {
+    // Command implementation
+  }
+};
+```
+
+### Command Properties
+- `name`: The trigger for the command (e.g., 'fact')
+- `description`: Explains what the command does
+- `owner`: (Optional) Boolean to restrict command to bot owner
+- `execute`: Async function containing the command's logic
+  - `bot`: Telegram bot instance
+  - `msg`: Message object
+  - `args`: Optional command arguments
 
 ## 🛠 Core Handlers
 
