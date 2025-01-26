@@ -90,6 +90,9 @@ Lumina is a Telegram bot assistant designed to provide intelligent interactions,
    node index.js
    ```
 
+## Deploying Lumina (Render)
+- [Read more here](DEPLOYMENT)
+
 ## 📜 Command Structure
 
 Lumina's commands follow a standardized structure:
