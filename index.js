@@ -16,7 +16,7 @@ const config = require('./config');
 const OwnerHandler = require('./handlers/ownerHandler');
 
 const PORT = process.env.PORT || 3000;
-const URL = process.env.URL || `https://lumina-wyp1.onrender.com`;
+const URL = process.env.URL || `url_here`;
 const UPTIME_URL = process.env.UPTIME_URL;
 
 const botBanner = `
