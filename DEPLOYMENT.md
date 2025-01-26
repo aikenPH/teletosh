@@ -1,7 +1,7 @@
 ## 🚀 Deploying Lumina on Render
 
 ### Step 1: Fork the Repository
-1. Go to the Lumina repository: [Lumina Repository](https://github.com/JohnDev19/Lumina/)
+1. Go to the Lumina repository: [Lumina Repository](https://github.com/JohnDev19/Lumina-Bot/)
 2. Click on the **Fork** button in the top right corner to create a copy of the repository in your GitHub account.
 
 ### Step 2: Create a Render Account
