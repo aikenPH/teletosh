@@ -23,6 +23,10 @@ class AutomatedResponses {
           response: () => this.sendThanks(chatId) 
         },
         { 
+          keywords: ['joke'], 
+          response: () => this.tellJoke(chatId) 
+        },
+        { 
           keywords: ['quote', 'inspire', 'motivation'], 
           response: () => this.getInspirationalQuote(chatId) 
         },
@@ -31,16 +35,8 @@ class AutomatedResponses {
           response: () => this.recommendMovie(chatId) 
         },
         { 
-          keywords: ['poem', 'poetry'], 
-          response: () => this.getRandomPoem(chatId) 
-        },
-        { 
-          keywords: ['trivia'], 
-          response: () => this.getTriviaQuestion(chatId) 
-        },
-        { 
-          keywords: ['advice'], 
-          response: () => this.getLifeAdvice(chatId) 
+          keywords: ['love', 'romantic'], 
+          response: () => this.sendLoveQuote(chatId) 
         }
       ];
 
@@ -77,16 +73,36 @@ class AutomatedResponses {
     this.bot.sendMessage(chatId, thankResponses[Math.floor(Math.random() * thankResponses.length)]);
   }
 
+  async tellJoke(chatId) {
+    try {
+      const jokeResponse = await axios.get('https://v2.jokeapi.dev/joke/Any?type=twopart');
+      const joke = jokeResponse.data;
+
+      const jokeMessage = `
+😂 Joke Time! 
+
+${joke.setup}
+
+${joke.delivery}
+      `;
+
+      this.bot.sendMessage(chatId, jokeMessage);
+    } catch (error) {
+      console.error('Joke Fetch Error:', error);
+      this.bot.sendMessage(chatId, "Why don't scientists trust atoms? Because they make up everything!");
+    }
+  }
+
   async getInspirationalQuote(chatId) {
     try {
-      const quoteResponse = await axios.get('https://api.quotable.io/random');
-      const quote = quoteResponse.data;
+      const quoteResponse = await axios.get('https://zenquotes.io/api/random');
+      const quote = quoteResponse.data[0];
 
       const quoteMessage = `
 💡 Inspirational Quote:
 
-"${quote.content}"
-- ${quote.author}
+"${quote.q}"
+- ${quote.a}
       `;
 
       this.bot.sendMessage(chatId, quoteMessage);
@@ -98,18 +114,18 @@ class AutomatedResponses {
 
   async recommendMovie(chatId) {
     try {
-      const movieResponse = await axios.get('https://api.themoviedb.org/3/movie/popular?api_key=4a1e2f274d0dfa4de6de64319d53a74c&language=en-US&page=1');
-      const movies = movieResponse.data.results;
+      const movieResponse = await axios.get('https://raw.githubusercontent.com/prust/wikipedia-movie-data/master/movies.json');
+      const movies = movieResponse.data;
       const randomMovie = movies[Math.floor(Math.random() * movies.length)];
 
       const movieMessage = `
 🎬 Movie Recommendation:
 
 Title: ${randomMovie.title}
-Year: ${randomMovie.release_date.split('-')[0]}
-Rating: ${randomMovie.vote_average}/10
+Year: ${randomMovie.year}
+Genres: ${randomMovie.genres ? randomMovie.genres.join(', ') : 'Not specified'}
 
-Quick Synopsis: ${randomMovie.overview.slice(0, 200)}...
+Sounds like an interesting watch!
       `;
 
       this.bot.sendMessage(chatId, movieMessage);
@@ -119,68 +135,30 @@ Quick Synopsis: ${randomMovie.overview.slice(0, 200)}...
     }
   }
 
-  async getRandomPoem(chatId) {
+  async sendLoveQuote(chatId) {
     try {
-      const poemResponse = await axios.get('https://www.poemist.com/api/v1/poems');
-      const poems = poemResponse.data;
-      const randomPoem = poems[Math.floor(Math.random() * poems.length)];
+      const quoteResponse = await axios.get('https://zenquotes.io/api/quotes');
+      const quotes = quoteResponse.data;
+      const loveQuotes = quotes.filter(quote => 
+        quote.q.toLowerCase().includes('love') || 
+        quote.a.toLowerCase().includes('love')
+      );
 
-      const poemMessage = `
-📜 Random Poem:
+      const selectedQuote = loveQuotes.length > 0 
+        ? loveQuotes[Math.floor(Math.random() * loveQuotes.length)]
+        : { q: "Love is a journey, not a destination.", a: "Unknown" };
 
-Title: ${randomPoem.title}
-Poet: ${randomPoem.poet.name}
+      const quoteMessage = `
+❤️ Love Quote:
 
-${randomPoem.lines.join('\n')}
+"${selectedQuote.q}"
+- ${selectedQuote.a}
       `;
 
-      this.bot.sendMessage(chatId, poemMessage);
+      this.bot.sendMessage(chatId, quoteMessage);
     } catch (error) {
-      console.error('Poem Fetch Error:', error);
-      this.bot.sendMessage(chatId, "Roses are red, violets are blue, poetry is magic, and so are you!");
-    }
-  }
-
-  async getTriviaQuestion(chatId) {
-    try {
-      const triviaResponse = await axios.get('https://opentdb.com/api.php?amount=1&type=multiple');
-      const trivia = triviaResponse.data.results[0];
-
-      const triviaMessage = `
-🧠 Trivia Challenge:
-
-Question: ${trivia.question}
-
-A) ${trivia.incorrect_answers[0]}
-B) ${trivia.incorrect_answers[1]}
-C) ${trivia.incorrect_answers[2]}
-D) ${trivia.correct_answer}
-
-Can you guess the right answer?
-      `;
-
-      this.bot.sendMessage(chatId, triviaMessage);
-    } catch (error) {
-      console.error('Trivia Fetch Error:', error);
-      this.bot.sendMessage(chatId, "What's the capital of France? Paris!");
-    }
-  }
-
-  async getLifeAdvice(chatId) {
-    try {
-      const adviceResponse = await axios.get('https://api.adviceslip.com/advice');
-      const advice = adviceResponse.data.slip.advice;
-
-      const adviceMessage = `
-💡 Life Advice:
-
-${advice}
-      `;
-
-      this.bot.sendMessage(chatId, adviceMessage);
-    } catch (error) {
-      console.error('Advice Fetch Error:', error);
-      this.bot.sendMessage(chatId, "Take a deep breath and remember, this too shall pass.");
+      console.error('Love Quote Fetch Error:', error);
+      this.bot.sendMessage(chatId, "Love is the greatest adventure of all!");
     }
   }
 }
