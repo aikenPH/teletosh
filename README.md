@@ -6,7 +6,7 @@ Lumina is a Telegram bot assistant designed to provide intelligent interactions,
 
 ## 🤖 Key Features
 
-### Advanced Communication
+### Communication
 - **AI-Powered Responses**: Intelligent and context-aware conversations
 - **Automated Greetings**: Smart, personalized welcome messages
 - **Voice Generation**: AI-generated voice responses with `/Lumina` command
