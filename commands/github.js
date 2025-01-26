@@ -3,7 +3,7 @@ const axios = require('axios');
 const path = require('path');
 const fs = require('fs');
 
-class EnhancedGitHubVisualizer {
+class LuminaGitHubVisualizer {
   constructor() {
     this.colors = {
       background: '#0d1117',
@@ -405,7 +405,7 @@ module.exports = {
   
   async execute(bot, msg, args) {
     const chatId = msg.chat.id;
-    const visualizer = new EnhancedGitHubVisualizer();
+    const visualizer = new LuminaGitHubVisualizer();
 
     try {
       if (args.length === 0) {
