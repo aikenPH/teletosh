@@ -18,13 +18,11 @@ module.exports = {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
 
-    // Check if game already exists
     if (activeGames.has(chatId)) {
       await bot.sendMessage(chatId, "❌ A game is already in progress. End the current game first.");
       return;
     }
 
-    // Handle game start command
     if (args[0] && args[0].toLowerCase() === 'start') {
       const gameState = {
         word: words[Math.floor(Math.random() * words.length)],
