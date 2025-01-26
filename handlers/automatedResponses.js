@@ -23,18 +23,6 @@ class AutomatedResponses {
           response: () => this.sendThanks(chatId) 
         },
         { 
-          keywords: ['weather'], 
-          response: () => this.getWeather(chatId, text) 
-        },
-        { 
-          keywords: ['joke'], 
-          response: () => this.tellJoke(chatId) 
-        },
-        { 
-          keywords: ['fact'], 
-          response: () => this.tellFact(chatId) 
-        },
-        { 
           keywords: ['quote', 'inspire', 'motivation'], 
           response: () => this.getInspirationalQuote(chatId) 
         },
@@ -43,12 +31,12 @@ class AutomatedResponses {
           response: () => this.recommendMovie(chatId) 
         },
         { 
-          keywords: ['trivia'], 
-          response: () => this.getTriviaQuestion(chatId) 
+          keywords: ['poem', 'poetry'], 
+          response: () => this.getRandomPoem(chatId) 
         },
         { 
-          keywords: ['cat', 'cats'], 
-          response: () => this.getCatFact(chatId) 
+          keywords: ['trivia'], 
+          response: () => this.getTriviaQuestion(chatId) 
         },
         { 
           keywords: ['advice'], 
@@ -89,57 +77,6 @@ class AutomatedResponses {
     this.bot.sendMessage(chatId, thankResponses[Math.floor(Math.random() * thankResponses.length)]);
   }
 
-  async getWeather(chatId, text) {
-    const cityMatch = text.match(/weather in (\w+)/i);
-    if (cityMatch) {
-      const city = cityMatch[1];
-      try {
-        const response = await axios.get('https://weatherapi-com.p.rapidapi.com/current.json', {
-          params: { q: city },
-          headers: {
-            'X-RapidAPI-Host': 'weatherapi-com.p.rapidapi.com',
-            'X-RapidAPI-Key': 'your_free_rapidapi_key_here'
-          }
-        });
-
-        const weatherData = response.data.current;
-        const weatherMessage = `
-🌦️ Current Weather in ${city.toUpperCase()}:
-🌡️ Temperature: ${weatherData.temp_c}°C
-☁️ Condition: ${weatherData.condition.text}
-💨 Wind Speed: ${weatherData.wind_kph} km/h
-        `;
-
-        this.bot.sendMessage(chatId, weatherMessage);
-      } catch (error) {
-        console.error('Weather Fetch Error:', error);
-        this.bot.sendMessage(chatId, `Sorry, I couldn't find weather information for ${city}. Please check the city name.`);
-      }
-    } else {
-      this.bot.sendMessage(chatId, "Please specify a city. For example, 'weather in London'.");
-    }
-  }
-
-  async tellJoke(chatId) {
-    try {
-      const jokeResponse = await axios.get('https://v2.jokeapi.dev/joke/Any?type=twopart');
-      const joke = jokeResponse.data;
-
-      const jokeMessage = `
-😂 Joke Time! 
-
-${joke.setup}
-
-${joke.delivery}
-      `;
-
-      this.bot.sendMessage(chatId, jokeMessage);
-    } catch (error) {
-      console.error('Joke Fetch Error:', error);
-      this.bot.sendMessage(chatId, "Why don't scientists trust atoms? Because they make up everything!");
-    }
-  }
-
   async getInspirationalQuote(chatId) {
     try {
       const quoteResponse = await axios.get('https://api.quotable.io/random');
@@ -161,29 +98,46 @@ ${joke.delivery}
 
   async recommendMovie(chatId) {
     try {
-      const movieResponse = await axios.get('https://movies-api14.p.rapidapi.com/random', {
-        headers: {
-          'X-RapidAPI-Host': 'movies-api14.p.rapidapi.com',
-          'X-RapidAPI-Key': 'your_free_rapidapi_key_here'
-        }
-      });
+      const movieResponse = await axios.get('https://api.themoviedb.org/3/movie/popular?api_key=4a1e2f274d0dfa4de6de64319d53a74c&language=en-US&page=1');
+      const movies = movieResponse.data.results;
+      const randomMovie = movies[Math.floor(Math.random() * movies.length)];
 
-      const movie = movieResponse.data;
       const movieMessage = `
 🎬 Movie Recommendation:
 
-Title: ${movie.title}
-Year: ${movie.year}
-Genre: ${movie.genres.join(', ')}
-Rating: ${movie.rating}
+Title: ${randomMovie.title}
+Year: ${randomMovie.release_date.split('-')[0]}
+Rating: ${randomMovie.vote_average}/10
 
-Quick Synopsis: ${movie.overview.slice(0, 200)}...
+Quick Synopsis: ${randomMovie.overview.slice(0, 200)}...
       `;
 
       this.bot.sendMessage(chatId, movieMessage);
     } catch (error) {
       console.error('Movie Recommendation Error:', error);
       this.bot.sendMessage(chatId, "The Shawshank Redemption - A classic movie about hope and friendship!");
+    }
+  }
+
+  async getRandomPoem(chatId) {
+    try {
+      const poemResponse = await axios.get('https://www.poemist.com/api/v1/poems');
+      const poems = poemResponse.data;
+      const randomPoem = poems[Math.floor(Math.random() * poems.length)];
+
+      const poemMessage = `
+📜 Random Poem:
+
+Title: ${randomPoem.title}
+Poet: ${randomPoem.poet.name}
+
+${randomPoem.lines.join('\n')}
+      `;
+
+      this.bot.sendMessage(chatId, poemMessage);
+    } catch (error) {
+      console.error('Poem Fetch Error:', error);
+      this.bot.sendMessage(chatId, "Roses are red, violets are blue, poetry is magic, and so are you!");
     }
   }
 
@@ -212,24 +166,6 @@ Can you guess the right answer?
     }
   }
 
-  async getCatFact(chatId) {
-    try {
-      const catFactResponse = await axios.get('https://catfact.ninja/fact');
-      const catFact = catFactResponse.data.fact;
-
-      const catFactMessage = `
-🐱 Cat Fact:
-
-${catFact}
-      `;
-
-      this.bot.sendMessage(chatId, catFactMessage);
-    } catch (error) {
-      console.error('Cat Fact Fetch Error:', error);
-      this.bot.sendMessage(chatId, "Cats have over 20 different vocalizations!");
-    }
-  }
-
   async getLifeAdvice(chatId) {
     try {
       const adviceResponse = await axios.get('https://api.adviceslip.com/advice');
@@ -245,24 +181,6 @@ ${advice}
     } catch (error) {
       console.error('Advice Fetch Error:', error);
       this.bot.sendMessage(chatId, "Take a deep breath and remember, this too shall pass.");
-    }
-  }
-
-  async tellFact(chatId) {
-    try {
-      const factResponse = await axios.get('https://uselessfacts.jsph.pl/random.json?language=en');
-      const fact = factResponse.data.text;
-
-      const factMessage = `
-🧠 Interesting Fact! 
-
-${fact}
-      `;
-
-      this.bot.sendMessage(chatId, factMessage);
-    } catch (error) {
-      console.error('Fact Fetch Error:', error);
-      this.bot.sendMessage(chatId, "Did you know that the shortest war in history lasted only 38 minutes?");
     }
   }
 }
