@@ -54,11 +54,21 @@ Lumina is a Telegram bot assistant designed to provide intelligent interactions,
    ```
 
    **- Obtaining Bot Token**:
-
+   
+   ![botFather](https://i.ibb.co/pJjrhBy/IMG-20250126-103529.jpg)
+   
    1. Visit BotFather on Telegram
    2. Use the /newbot command to create a new bot
    3. Choose a name and username for your bot
    4. BotFather will provide you with a bot token
+  
+   **- Obtaining ID**:
+   
+   ![id](https://i.ibb.co/fvZ8Cxw/IMG-20250126-102430.jpg)
+   
+   1. **Search for a User ID Bot**: You can search for a bot like @userinfobot on Telegram.
+   2. **Start the Bot**: Click on the bot and press the "Start" button.
+   3. **Get Your User ID**: The bot will respond with your user ID and other information.
   
     **- Webhook Configuration**
    
@@ -79,13 +89,13 @@ Lumina is a Telegram bot assistant designed to provide intelligent interactions,
 
 ## 🛠 Core Handlers
 
-- **autoReactHandler.js**: Automated message reactions
-- **automatedResponses.js**: Intelligent greeting and response system
-- **commandHandler.js**: Process and route user commands
-- **aiResponseHandler.js**: Manage AI-generated responses
-- **voiceGenerationHandler.js**: Generate AI voice outputs
-- **ownerHandler.js**: Manage owner-specific administrative actions
-
+- **autoReactHandler**
+- **automatedResponses**
+- **commandHandler** 
+- **eventReminder**
+- **groupManager** 
+- **moderationTools**
+- **ownerHandler**
 
 ## 🛡️ Database
 
