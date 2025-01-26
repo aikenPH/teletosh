@@ -68,7 +68,9 @@ Lumina is a Telegram bot assistant designed to provide intelligent interactions,
    
    1. **Search for a User ID Bot**: You can search for a bot like @userinfobot on Telegram.
    2. **Start the Bot**: Click on the bot and press the "Start" button.
-   3. **Get Your User ID**: The bot will respond with your user ID and other information.
+   3. **Get Your User ID in .env**: The bot will respond with your user ID and other information.
+   4. **Setting up your Owner ID**:
+   `OWNER_ID=your_telegram_user_id`
   
     **- Webhook Configuration**
    
