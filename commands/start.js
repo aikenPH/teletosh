@@ -2,7 +2,7 @@ module.exports = {
   name: 'start',
   description: 'Initializes the bot and begins interaction with the user.',
   execute(bot, msg) {
-    const welcomeMessage = `Welcome to Lumina Bot! 🌟
+    const welcomeMessage = `Welcome to TOSHIA CHATBOT! 🌟
 I'm here to assist you with various tasks.
 
 Type /help to see a list of available commands.`;
