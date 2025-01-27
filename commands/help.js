@@ -81,7 +81,7 @@ module.exports = {
       const currentPageCommands = fullCommandList.slice(startIndex, endIndex);
 
       const helpMessage = `
-🤖 <b>Lumina Bot Command Center</b> 🌟
+🤖 <b>TOSHIA Command Center</b> 🌟
 
 <b>Commands (Page ${pageNumber}/${totalPages}):</b>
 
@@ -93,7 +93,7 @@ ${currentPageCommands.map(cmd =>
 <b>Total Commands:</b> ${fullCommandList.length}
       `.trim();
 
-      const helpImageUrl = 'https://i.ibb.co/3YN5ggW/lumina.jpg';
+      const helpImageUrl = 'https://i.ibb.co/2669rNr/YAWAAARA.gif';
 
       try {
         await bot.sendPhoto(msg.chat.id, helpImageUrl, {
