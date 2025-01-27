@@ -12,7 +12,7 @@ module.exports = {
         return bot.sendMessage(msg.chat.id, '❌ Owner information is not configured.');
       }
 
-      const profilePhotoUrl = 'https://i.ibb.co/cTcsnr3/IMG-20241217-090531.jpg';
+      const profilePhotoUrl = 'https://i.ibb.co/2669rNr/YAWAAARA.gif';
 
       let ownerUser;
       try {
@@ -40,8 +40,7 @@ module.exports = {
 
 📞 Contact Methods:
 • Telegram Direct Message
-• Facebook: https://www.facebook.com/JohnDev19
-• GitHub: https://github.com/JohnDev19
+• Facebook: https://www.facebook.com/marjhuncutieee
 
 🌐 Chat Details:
 💬 Current Chat ID: <code>${msg.chat.id}</code>
