@@ -61,7 +61,7 @@ class GroupManager {
 
   async sendBotIntroduction(chatId) {
     const introMessage = `
-<b>🤖 Hello! I'm Lumina Bot!</b>
+<b>🤖 Hello! TOSHIA CHATBOT!</b>
 
 Thank you for adding me to your group! I'm here to help manage and enhance your group experience.
 
@@ -70,13 +70,13 @@ Thank you for adding me to your group! I'm here to help manage and enhance your 
 2. Use /help to see all available commands
 3. Start using my features!
 
-<i>Developed by JohnDev19 with ❤️</i>
+<i>Developed by @Nighative</i>
 
 Need help? Just type /help to get started!
     `;
 
     try {
-      const botLogoUrl = 'https://i.ibb.co/3YN5ggW/lumina.jpg';
+      const botLogoUrl = 'https://i.ibb.co/2669rNr/YAWAAARA.gif';
       await this.bot.sendPhoto(chatId, botLogoUrl, {
         caption: introMessage,
         parse_mode: 'HTML'
